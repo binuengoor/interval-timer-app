@@ -298,7 +298,7 @@ class WorkoutEngine {
         this.timeLeft = 0;
         this.timerId = null;
         this.isRunning = false;
-        
+
         this.buildSequence();
         this.initDOM();
     }
@@ -336,7 +336,7 @@ class WorkoutEngine {
                 }
             }
         });
-        
+
         // Add final Done phase
         this.sequence.push({
             phase: 'DONE',
@@ -345,6 +345,15 @@ class WorkoutEngine {
             setNum: 0,
             totalSets: 0
         });
+    }
+
+    speak(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.1;
+            window.speechSynthesis.speak(utterance);
+        }
     }
 
     initDOM() {
@@ -363,6 +372,19 @@ class WorkoutEngine {
     loadCurrentStep() {
         const step = this.sequence[this.currentIndex];
         this.timeLeft = step.duration;
+
+        // Announce phase
+        if (step.phase === 'WORK') {
+            this.speak('Go');
+        } else if (step.phase === 'REST') {
+            this.speak('Rest');
+        } else if (step.phase === 'PREPARE') {
+            if (step.exercise) {
+                this.speak(`Next exercise, ${step.exercise.name}`);
+            }
+        } else if (step.phase === 'DONE') {
+            this.speak('Workout complete! Great job!');
+        }
 
         // Update UI Text
         this.displayPhase.textContent = step.phase;
@@ -417,6 +439,14 @@ class WorkoutEngine {
         this.timerId = setInterval(() => {
             this.timeLeft--;
             this.updateTimeDisplay();
+
+            if (this.timeLeft === 3) {
+                this.speak('3');
+            } else if (this.timeLeft === 2) {
+                this.speak('2');
+            } else if (this.timeLeft === 1) {
+                this.speak('1');
+            }
             
             if (this.timeLeft <= 0) {
                 this.playBeep();
