@@ -1,27 +1,49 @@
-### Timer App - README
+# Interval Timer App
 
-#### Features
-- Countdown timer with hours, minutes, seconds, and milliseconds.
-- Start timer by clicking anywhere on the page.
-- Predefined presets for quick time settings.
-- Reset button to clear and restart the timer.
-- Tibetan bell sound plays when the timer ends.
-- Dark mode styling with Water.css integration.
+A comprehensive, modern interval timer application tailored for physical therapy and workouts. This application allows you to create detailed workout plans consisting of multiple exercises with configurable work and rest intervals.
 
-#### How to Use
-1. Enter hours, minutes, and seconds in the input fields.
-2. Click **Activate** to set the timer.
-3. Click anywhere on the page to start the countdown.
-4. Use **Presets** to quickly set a predefined time.
-5. **Reset** clears inputs and restarts the timer.
+![Workout Screen](assets/screenshot.png)
 
-#### Installation
-1. Clone or download the repository.
-2. Include `tibetan-bell.mp3` in the `assets` folder.
-3. Open `index.html` in your browser.
+## Features
 
-#### Technologies Used
-- **HTML/CSS/JavaScript**
-- **Water.css** for dark mode and styling simplicity.
+- **Modern Mobile-First UI**: Dark-themed, responsive design that looks great on mobile and desktop.
+- **Custom Workout Plans**: Create and manage multiple physical therapy/workout plans.
+- **Detailed Exercises**: Configure name, description, sets, reps, work time, and rest time for each exercise.
+- **Media Integration**:
+  - Automatically fetch default thumbnails for YouTube links.
+  - View rotating images or YouTube videos in the media container during workouts.
+  - Automatically pause other media.
+- **Text-To-Speech (TTS) Prompts**: Uses the Web Speech API to provide audio cues (e.g., "3-2-1 Go", "Rest", and exercise announcements).
+- **Backend YAML Storage**: Plan data is persisted into a local YAML file (`data/plans.yml`) instead of just local storage.
 
-Enjoy your Timer App! 😊
+## How to Run with Docker Compose
+
+To run the application easily via Docker without needing to install Node.js locally:
+
+1. Clone the repository.
+2. Ensure you have Docker and Docker Compose installed.
+3. Start the application:
+   ```bash
+   docker-compose up -d
+   ```
+4. Access the app in your browser at `http://localhost:8080`.
+
+### Data Volume Mounting
+
+By default, the `docker-compose.yml` mounts a local `./data` directory into the container at `/app/data`. This allows you to:
+- Retain your saved workouts even if the container is destroyed.
+- Manually edit or backup the `plans.yml` file from your local machine.
+
+## Local Development (Node.js)
+
+If you prefer to run the app via Node.js:
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Start the server:
+   ```bash
+   npm start
+   ```
+3. Open `http://localhost:80` (or whichever port is assigned via the `PORT` env var).

@@ -2,9 +2,10 @@ version: '3.8'
 
 services:
   timer-app:
-    # This assumes the user will be pulling the published image from their own GitHub Container Registry.
     image: ghcr.io/binuengoor/timer-app:latest
     container_name: interval-timer-app
     ports:
       - "8080:80"
+    volumes:
+      - ./data:/app/data
     restart: always

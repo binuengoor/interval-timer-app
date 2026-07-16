@@ -1,5 +1,5 @@
 // State Management
-let plans = JSON.parse(localStorage.getItem('intervalTimerPlans')) || [];
+let plans = [];
 let currentPlanId = null;
 let currentExerciseId = null;
 
@@ -15,7 +15,33 @@ function generateId() {
     return '_' + Math.random().toString(36).substr(2, 9);
 }
 
-function saveState() {
+async function loadState() {
+    try {
+        const response = await fetch('/api/plans');
+        if (response.ok) {
+            plans = await response.json();
+            renderDashboard();
+        }
+    } catch (e) {
+        console.error("Failed to load plans from server, falling back to localStorage", e);
+        plans = JSON.parse(localStorage.getItem('intervalTimerPlans')) || [];
+        renderDashboard();
+    }
+}
+
+async function saveState() {
+    try {
+        await fetch('/api/plans', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(plans)
+        });
+    } catch (e) {
+        console.error("Failed to save plans to server, saving to localStorage instead", e);
+    }
+    // Always backup to local storage just in case
     localStorage.setItem('intervalTimerPlans', JSON.stringify(plans));
 }
 
@@ -377,7 +403,7 @@ class WorkoutEngine {
         this.displayExerciseNotes = document.getElementById('workoutExerciseNotes');
         this.displayProgress = document.getElementById('workoutProgress');
         this.playPauseBtn = document.getElementById('playPauseBtn');
-        
+
         this.displayPlanName.textContent = this.plan.name || 'Workout';
         this.loadCurrentStep();
     }
@@ -414,7 +440,7 @@ class WorkoutEngine {
         this.displayPhase.textContent = step.phase;
         this.displayPhase.className = `phase-label phase-${step.phase.toLowerCase()}`;
         this.displayTimer.className = `display phase-${step.phase.toLowerCase()}`;
-        
+
         if (step.exercise) {
             this.displayExerciseName.textContent = step.exercise.name || 'Unnamed Exercise';
             this.displayExerciseNotes.textContent = step.exercise.notes ? `Notes: ${step.exercise.notes}` : '';
@@ -431,7 +457,7 @@ class WorkoutEngine {
             this.displayProgress.textContent = '';
             document.getElementById('workoutMediaContainer').classList.add('hidden');
         }
-        
+
         this.updateTimeDisplay();
     }
 
@@ -459,7 +485,7 @@ class WorkoutEngine {
 
         this.isRunning = true;
         this.playPauseBtn.textContent = 'Pause';
-        
+
         this.timerId = setInterval(() => {
             this.timeLeft--;
             this.updateTimeDisplay();
@@ -471,7 +497,7 @@ class WorkoutEngine {
             } else if (this.timeLeft === 1) {
                 this.speak('1');
             }
-            
+
             if (this.timeLeft <= 0) {
                 this.playBeep();
                 this.nextStep();
@@ -545,5 +571,5 @@ document.getElementById('prevPhaseBtn').addEventListener('click', () => {
     if (workoutEngine) workoutEngine.prevStep();
 });
 
-// Initial Render
-renderDashboard();
+// Initial Load
+loadState();
