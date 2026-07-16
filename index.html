@@ -3,49 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Timer application with customizable presets">
-    <title>Timer App</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+    <meta name="description" content="Interval Timer App for Workouts and Physical Therapy">
+    <title>Interval Timer App</title>
+    <!-- Use a modern Google Font instead of water.css -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
-    <main class="timer">
-        <h1>Timer</h1>
-        <div class="display" id="display" role="timer" aria-live="polite">00:00:00.000</div>
-        
-        <div class="controls">
-            <div class="inputs">
-                <div class="input-group">
-                    <label for="minutes">Minutes</label>
-                    <input type="number" id="minutes" min="0" max="59" aria-label="Minutes">
-                </div>
-                <div class="input-group">
-                    <label for="seconds">Seconds</label>
-                    <input type="number" id="seconds" min="0" max="59" aria-label="Seconds">
-                </div>
+    <div id="app">
+        <!-- Dashboard View -->
+        <main id="dashboardView" class="view">
+            <header class="app-header">
+                <h1>My Plans</h1>
+                <button id="createNewPlanBtn" class="btn btn-primary">+ New Plan</button>
+            </header>
+            <div id="planList" class="plan-list">
+                <!-- Plan items will be injected here -->
             </div>
-            <div class="buttons">
-                <button id="startBtn" aria-label="Start timer">Start</button>
-                <button id="pauseBtn" aria-label="Pause timer">Pause</button>
-                <button id="resetBtn" aria-label="Reset timer">Reset</button>
+        </main>
+
+        <!-- Plan Editor View -->
+        <main id="planEditorView" class="view hidden">
+            <header class="app-header">
+                <button id="backToDashboardBtn" class="btn btn-icon">&larr; Back</button>
+                <h1 id="planEditorTitle">Edit Plan</h1>
+            </header>
+
+            <div class="card editor-card">
+                <div class="input-group">
+                    <label for="planName">Plan Name</label>
+                    <input type="text" id="planName" placeholder="e.g., Shoulder Rehab Level 1">
+                </div>
+                <button id="savePlanBtn" class="btn btn-secondary">Save Plan Name</button>
+            </div>
+
+            <div class="exercises-header">
+                <h2>Exercises</h2>
+                <button id="addExerciseBtn" class="btn btn-primary btn-sm">+ Add Exercise</button>
+            </div>
+
+            <div id="exerciseList" class="exercise-list">
+                <!-- Exercise items will be injected here -->
+            </div>
+
+            <button id="startPlanBtn" class="btn btn-success btn-large btn-block mt-2">Start Workout</button>
+        </main>
+
+        <!-- Exercise Editor Modal -->
+        <div id="exerciseEditorModal" class="modal hidden">
+            <div class="modal-content card">
+                <h2>Exercise Details</h2>
+                <div class="input-group">
+                    <label for="exerciseName">Name</label>
+                    <input type="text" id="exerciseName" placeholder="e.g., Wall Pushups">
+                </div>
+                <div class="input-group">
+                    <label for="exerciseNotes">Notes / Description</label>
+                    <textarea id="exerciseNotes" rows="3" placeholder="Keep back straight..."></textarea>
+                </div>
+
+                <div class="inputs-row">
+                    <div class="input-group">
+                        <label for="exerciseSets">Sets</label>
+                        <input type="number" id="exerciseSets" min="1" value="1">
+                    </div>
+                    <div class="input-group">
+                        <label for="exerciseReps">Reps</label>
+                        <input type="number" id="exerciseReps" min="1" value="10">
+                    </div>
+                </div>
+
+                <div class="inputs-row">
+                    <div class="input-group">
+                        <label for="exerciseWorkTime">Work Time (sec)</label>
+                        <input type="number" id="exerciseWorkTime" min="0" value="30">
+                    </div>
+                    <div class="input-group">
+                        <label for="exerciseRestTime">Rest Time (sec)</label>
+                        <input type="number" id="exerciseRestTime" min="0" value="10">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="exerciseImages">Image URLs (comma separated)</label>
+                    <input type="text" id="exerciseImages" placeholder="https://..., https://...">
+                </div>
+                <div class="input-group">
+                    <label for="exerciseYoutube">YouTube URL or ID</label>
+                    <input type="text" id="exerciseYoutube" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+
+                <div class="modal-actions">
+                    <button id="cancelExerciseBtn" class="btn btn-secondary">Cancel</button>
+                    <button id="saveExerciseBtn" class="btn btn-primary">Save Exercise</button>
+                </div>
             </div>
         </div>
 
-        <div class="preset-section">
-            <div class="preset-container">
-                <select id="presetSelect" class="preset-select" aria-label="Timer presets">
-                    <option value="">Select Preset</option>
-                    <option value="60000">1 minute</option>
-                    <option value="120000">2 minutes</option>
-                    <option value="300000">5 minutes</option>
-                    <option value="900000">15 minutes</option>
-                    <option value="1800000">30 minutes</option>
-                    <option value="3600000">60 minutes</option>
-                </select>
-                <button id="applyPreset" class="apply-preset">Apply</button>
+        <!-- Workout View -->
+        <main id="workoutView" class="view hidden">
+            <header class="workout-header-bar">
+                <button id="exitWorkoutBtn" class="btn btn-icon">&larr; Exit</button>
+                <h2 id="workoutPlanName">Plan Name</h2>
+                <div style="width: 40px;"></div> <!-- spacer -->
+            </header>
+
+            <div class="workout-content">
+                <div class="workout-info-card card">
+                    <h3 id="workoutExerciseName" class="text-xl">Exercise Name</h3>
+                    <p id="workoutExerciseNotes" class="notes"></p>
+                    <div id="workoutProgress" class="badge">Set 1 of 3</div>
+                </div>
+
+                <!-- Media Section -->
+                <div id="workoutMediaContainer" class="media-container hidden">
+                    <div id="mediaToggle" class="media-toggle hidden">
+                        <button id="showImageBtn" class="active">Images</button>
+                        <button id="showVideoBtn">Video</button>
+                    </div>
+                    <div id="imageCycleContainer" class="media-content">
+                        <img id="workoutImage" src="" alt="Exercise media">
+                    </div>
+                    <div id="youtubeContainer" class="media-content hidden">
+                        <div id="youtubePlayer"></div>
+                    </div>
+                </div>
+
+                <div class="timer-section">
+                    <div id="phaseDisplay" class="phase-label">PREPARE</div>
+                    <div id="timerDisplay" class="display phase-prepare">00:00</div>
+                </div>
+
+                <div class="controls workout-controls">
+                    <button id="prevPhaseBtn" class="btn btn-control" aria-label="Previous">|&lt;</button>
+                    <button id="playPauseBtn" class="btn btn-control btn-play" aria-label="Play/Pause">Play</button>
+                    <button id="nextPhaseBtn" class="btn btn-control" aria-label="Next">&gt;|</button>
+                </div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <audio id="alarm" src="assets/alarm.mp3" preload="auto"></audio>
     <script src="script.js" defer></script>
