@@ -106,9 +106,22 @@ function renderExerciseList() {
     }
 
     plan.exercises.forEach((ex, index) => {
+        let thumbUrl = '';
+        if (ex.images && ex.images.length > 0) {
+            thumbUrl = ex.images[0];
+        } else if (ex.youtubeUrl) {
+            const ytId = extractYouTubeID(ex.youtubeUrl);
+            if (ytId) {
+                thumbUrl = `https://img.youtube.com/vi/${ytId}/default.jpg`;
+            }
+        }
+
+        const thumbHtml = thumbUrl ? `<img src="${thumbUrl}" alt="thumbnail" class="exercise-thumb">` : `<div class="exercise-thumb placeholder"></div>`;
+
         const div = document.createElement('div');
         div.className = 'exercise-item card';
         div.innerHTML = `
+            ${thumbHtml}
             <div class="item-details" onclick="editExercise('${ex.id}')">
                 <h4>${index + 1}. ${ex.name || 'Unnamed'}</h4>
                 <p>${ex.sets} sets | ${ex.workTime}s work / ${ex.restTime}s rest</p>
@@ -380,7 +393,18 @@ class WorkoutEngine {
             this.speak('Rest');
         } else if (step.phase === 'PREPARE') {
             if (step.exercise) {
-                this.speak(`Next exercise, ${step.exercise.name}`);
+                let prompt = `Next exercise, ${step.exercise.name}. `;
+                if (step.exercise.notes) {
+                    prompt += `${step.exercise.notes}. `;
+                }
+                prompt += `${step.exercise.sets} sets of ${step.exercise.reps} reps. `;
+                prompt += `Work for ${step.exercise.workTime} seconds, `;
+                if (step.exercise.restTime > 0) {
+                    prompt += `rest for ${step.exercise.restTime} seconds.`;
+                } else {
+                    prompt += `no rest.`;
+                }
+                this.speak(prompt);
             }
         } else if (step.phase === 'DONE') {
             this.speak('Workout complete! Great job!');
