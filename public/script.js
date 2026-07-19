@@ -78,7 +78,7 @@ function renderDashboard() {
 }
 
 document.getElementById('createNewPlanBtn').addEventListener('click', () => {
-    const newPlan = { id: generateId(), name: '', exercises: [] };
+    const newPlan = { id: generateId(), name: '', transitionTime: 5, exercises: [] };
     plans.push(newPlan);
     saveState();
     editPlan(newPlan.id);
@@ -97,6 +97,7 @@ function editPlan(id) {
     currentPlanId = id;
     const plan = plans.find(p => p.id === id);
     document.getElementById('planName').value = plan.name;
+    document.getElementById('planTransitionTime').value = plan.transitionTime !== undefined ? plan.transitionTime : 5;
     renderExerciseList();
     showView('planEditor');
 }
@@ -117,6 +118,8 @@ function saveCurrentPlan() {
     const plan = plans.find(p => p.id === currentPlanId);
     if (plan) {
         plan.name = document.getElementById('planName').value;
+        const tt = parseInt(document.getElementById('planTransitionTime').value);
+        plan.transitionTime = isNaN(tt) ? 5 : tt;
         saveState();
     }
 }
@@ -289,8 +292,12 @@ function loadMedia(exercise) {
                 videoId: ytId
             });
         } else {
-            ytPlayer.loadVideoById(ytId);
-            ytPlayer.pauseVideo();
+            if (typeof ytPlayer.cueVideoById === 'function') {
+                ytPlayer.cueVideoById(ytId);
+            } else {
+                ytPlayer.loadVideoById(ytId);
+                ytPlayer.pauseVideo();
+            }
         }
     }
 
@@ -346,9 +353,10 @@ class WorkoutEngine {
         this.sequence = [];
         this.plan.exercises.forEach((ex, exIndex) => {
             // Prepare phase before each exercise
+            const prepDuration = this.plan.transitionTime !== undefined ? this.plan.transitionTime : 5;
             this.sequence.push({
                 phase: 'PREPARE',
-                duration: 5, // fixed 5 second prep
+                duration: prepDuration, // configured transition time
                 exercise: ex,
                 setNum: 1,
                 totalSets: ex.sets

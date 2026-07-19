@@ -37,7 +37,11 @@
                     <label for="planName">Plan Name</label>
                     <input type="text" id="planName" placeholder="e.g., Shoulder Rehab Level 1">
                 </div>
-                <button id="savePlanBtn" class="btn btn-secondary">Save Plan Name</button>
+                <div class="input-group mt-2">
+                    <label for="planTransitionTime">Time between exercises (sec)</label>
+                    <input type="number" id="planTransitionTime" min="0" value="5">
+                </div>
+                <button id="savePlanBtn" class="btn btn-secondary mt-2">Save Plan Settings</button>
             </div>
 
             <div class="exercises-header">

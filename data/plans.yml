@@ -1,23 +1,77 @@
-- id: _cs464d4jn
-  name: Leg Work
+- id: _9e4msr0ho
+  name: Shoulder PT
   exercises:
-    - id: _korys1w8i
-      name: Squats
-      notes: ''
-      sets: 1
+    - id: _ex001
+      name: Supine Wand Flexion (Shoulder)
+      notes: >-
+        Lie on your back and hold a wand or cane as pictured. Slowly raise the
+        wand towards overhead. Use your unaffected arm to assist with the
+        movement.
+      sets: 2
       reps: 10
-      workTime: 30
-      restTime: 10
+      workTime: 10
+      restTime: 0
       images:
-        - https://i.imgur.com/example1.jpg
-        - https://i.imgur.com/example2.jpg
-      youtubeUrl: ''
-    - id: _zvadgwj6w
-      name: Lunges
-      notes: ''
+        - >-
+          https://ptsdev.s3.amazonaws.com/assets/new_images/bdf0f27d-69ec-4fd7-be8d-eb9cd435b325.jpg?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAYL4XK7BB2RNDOA72%2F20260719%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260719T005730Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=3e205c1a82d4d9599df93e9b0d78ad830280529161d6f43baeb654af749d9e9a
+        - >-
+          https://ptsdev.s3.amazonaws.com/assets/new_images/c650dfe3-df05-40cc-92a4-3fac34791bd3.jpg?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAYL4XK7BB2RNDOA72%2F20260719%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260719T005730Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=1b842a81a46b58b16dad0dae4e73c81f7c8240f2cd9bacfd6d037f1eea78f6ce
+      youtubeUrl: http://www.youtube.com/watch?v=LKE2CQfu9WQ
+    - id: _ex002
+      name: Wall slides with roller
+      notes: >-
+        Don't use a roller. Just slide your hand up the wall or walk through a
+        doorway for more stretch
       sets: 1
-      reps: 10
+      reps: 5
       workTime: 30
-      restTime: 10
-      images: []
-      youtubeUrl: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+      restTime: 0
+      images:
+        - >-
+          https://healthcareblocks-storage-prompttherapy-1698.s3.us-west-2.amazonaws.com/31615/f8834f43-0f4c-48b6-a009-221bbf0a8b37.jpg?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIARVSXA3ZDLKKEKKRS%2F20260719%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20260719T005730Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=79f77cd3fa359f4d495e41f560d79b3e3daee840c07b1f0ebeba4bc458f4e06b
+      youtubeUrl: http://www.youtube.com/watch?v=i_0zLUcE-zk
+    - id: _ex003
+      name: Shoulder Abduction Wall Slide with Towel
+      notes: >-
+        Don't use a towel. Stand to the side and with a straight arm slowly
+        slide the arm up and down. Repeat for the desired number of reps.
+      sets: 1
+      reps: 5
+      workTime: 30
+      restTime: 0
+      images:
+        - >-
+          https://ptsdev.s3.amazonaws.com/assets/new_images/eca7af1d-ef24-427d-b3fe-763d8efeff55.jpg?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAYL4XK7BB2RNDOA72%2F20260719%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260719T005730Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=43ec355047b6dcfb6780b14c1e0aa6df3fd0df3e7d9660b8397f36f3aafb4aab
+        - >-
+          https://ptsdev.s3.amazonaws.com/assets/new_images/a8d4f6e4-40b8-4983-ba9b-8aaa6d3399e2.jpg?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAYL4XK7BB2RNDOA72%2F20260719%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260719T005730Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=f88162e1e90c4d3bd48a03868edc147be16adb00e14eea75b14ae84b198a39f8
+      youtubeUrl: http://www.youtube.com/watch?v=8Gj9tR4MXsg
+    - id: _ex004
+      name: Corner pec stretch
+      notes: >-
+        Stand facing the corner with your arms up and your elbows in line with
+        your shoulders. Lean your body in towards the corner to feel a stretch.
+      sets: 1
+      reps: 5
+      workTime: 30
+      restTime: 0
+      images:
+        - >-
+          https://healthcareblocks-storage-prompttherapy-1698.s3.us-west-2.amazonaws.com/19870/de13508b-cb16-4f46-9052-c49e2ddf056d.jpg?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIARVSXA3ZDLKKEKKRS%2F20260719%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20260719T005730Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=5ea79689ee4bebfa70a6cfbc5860464ecd9cbcfc6d62914753c2b33a2eae8257
+      youtubeUrl: http://www.youtube.com/watch?v=SdjsqyTiHcc
+    - id: _ex005
+      name: Sidelying Internal Rotation Stretch (Sleeper Stretch)
+      notes: >-
+        Lie on your side with the affected arm on the bottom. Use your
+        unaffected arm to gently draw your affected forearm towards the table or
+        bed.
+      sets: 1
+      reps: 5
+      workTime: 30
+      restTime: 0
+      images:
+        - >-
+          https://ptsdev.s3.amazonaws.com/assets/new_images/e18a3012-2ea2-486d-96fd-c76477d58484.jpg?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAYL4XK7BB2RNDOA72%2F20260719%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260719T005730Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=600d3e830f159878181556213891ed331826ae36fcb2a38a820fbbe1cf04b388
+        - >-
+          https://ptsdev.s3.amazonaws.com/assets/new_images/b45ebcd3-da8e-43de-8ade-587a79da3a33.jpg?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAYL4XK7BB2RNDOA72%2F20260719%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260719T005730Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=5fe2718383ff5a4b11b65cf45fe58282f0ad487f789dd72f6954998eebc1593d
+      youtubeUrl: http://www.youtube.com/watch?v=clqjaMIRWfM
+  transitionTime: 2
