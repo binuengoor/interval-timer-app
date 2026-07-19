@@ -1,5 +1,6 @@
 // State Management
 let plans = [];
+let appConfig = {};
 let currentPlanId = null;
 let currentExerciseId = null;
 
@@ -17,13 +18,18 @@ function generateId() {
 
 async function loadState() {
     try {
+        const configResponse = await fetch('/api/config');
+        if (configResponse.ok) {
+            appConfig = await configResponse.json();
+        }
+
         const response = await fetch('/api/plans');
         if (response.ok) {
             plans = await response.json();
             renderDashboard();
         }
     } catch (e) {
-        console.error("Failed to load plans from server, falling back to localStorage", e);
+        console.error("Failed to load state from server, falling back to localStorage", e);
         plans = JSON.parse(localStorage.getItem('intervalTimerPlans')) || [];
         renderDashboard();
     }
@@ -302,12 +308,13 @@ function loadMedia(exercise) {
     }
 
     if (hasImages) {
-        workoutImage.src = exercise.images[0];
+        const getImageUrl = (url) => `/api/image?url=${encodeURIComponent(url)}&planId=${currentPlanId}`;
+        workoutImage.src = getImageUrl(exercise.images[0]);
         if (exercise.images.length > 1) {
             let imgIndex = 0;
             imageCycleInterval = setInterval(() => {
                 imgIndex = (imgIndex + 1) % exercise.images.length;
-                workoutImage.src = exercise.images[imgIndex];
+                workoutImage.src = getImageUrl(exercise.images[imgIndex]);
             }, 3000);
         }
     }
@@ -336,6 +343,45 @@ document.getElementById('showVideoBtn').addEventListener('click', showVideo);
 let workoutEngine = null;
 const alarmAudio = document.getElementById('alarm');
 
+let wakeLock = null;
+
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => {
+                console.log('Screen Wake Lock released:', wakeLock.released);
+            });
+            console.log('Screen Wake Lock acquired:', wakeLock !== null);
+        }
+    } catch (err) {
+        console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+    }
+}
+
+function releaseWakeLock() {
+    if (wakeLock !== null) {
+        wakeLock.release().then(() => {
+            wakeLock = null;
+        });
+    }
+}
+
+// Re-request wake lock if document becomes visible again
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+    }
+});
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(err => {
+            console.error('ServiceWorker registration failed: ', err);
+        });
+    });
+}
+
 class WorkoutEngine {
     constructor(plan) {
         this.plan = plan;
@@ -347,6 +393,7 @@ class WorkoutEngine {
 
         this.buildSequence();
         this.initDOM();
+        requestWakeLock();
     }
 
     buildSequence() {
@@ -395,6 +442,32 @@ class WorkoutEngine {
     }
 
     speak(text) {
+        if (appConfig && appConfig.tts && appConfig.tts.enabled) {
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('TTS proxy failed');
+                return res.blob();
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.play();
+                audio.onended = () => URL.revokeObjectURL(url);
+            })
+            .catch(e => {
+                console.error("Custom TTS failed, falling back to window.speechSynthesis", e);
+                this.fallbackSpeak(text);
+            });
+        } else {
+            this.fallbackSpeak(text);
+        }
+    }
+
+    fallbackSpeak(text) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
@@ -546,6 +619,7 @@ class WorkoutEngine {
 
     stop() {
         this.pause();
+        releaseWakeLock();
     }
 }
 
