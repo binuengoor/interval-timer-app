@@ -109,6 +109,23 @@
             </div>
         </div>
 
+        <!-- Stats Modal -->
+        <div id="statsModal" class="modal hidden">
+            <div class="modal-content card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>Workout Stats</h2>
+                    <button id="closeStatsBtn" class="btn btn-icon" style="font-size: 1.5rem;">&times;</button>
+                </div>
+                <div id="statsContent" style="margin-top: 1rem; max-height: 300px; overflow-y: auto;">
+                    <!-- Stats will be injected here -->
+                </div>
+                <div class="modal-actions mt-2" style="justify-content: space-between;">
+                    <button id="resetStatsBtn" class="btn btn-danger">Reset Stats</button>
+                    <button id="closeStatsModalBtn" class="btn btn-secondary">Close</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Workout View -->
         <main id="workoutView" class="view hidden">
             <header class="workout-header-bar">
