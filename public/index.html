@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Interval Timer App for Workouts and Physical Therapy">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
     <title>Interval Timer App</title>
     <!-- Use a modern Google Font instead of water.css -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,7 +39,11 @@
                     <label for="planName">Plan Name</label>
                     <input type="text" id="planName" placeholder="e.g., Shoulder Rehab Level 1">
                 </div>
-                <button id="savePlanBtn" class="btn btn-secondary">Save Plan Name</button>
+                <div class="input-group mt-2">
+                    <label for="planTransitionTime">Time between exercises (sec)</label>
+                    <input type="number" id="planTransitionTime" min="0" value="5">
+                </div>
+                <button id="savePlanBtn" class="btn btn-secondary mt-2">Save Plan Settings</button>
             </div>
 
             <div class="exercises-header">
