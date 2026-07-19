@@ -1,12 +1,24 @@
-# Use an official lightweight Nginx image
-FROM nginx:alpine
+# Use an official lightweight Node image
+FROM node:18-alpine
 
-# Copy the static website files to the Nginx html directory
-COPY index.html style.css script.js /usr/share/nginx/html/
-COPY assets /usr/share/nginx/html/assets/
+# Set working directory
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm install --production
+
+# Copy backend server script
+COPY server.js .
+
+# Copy frontend static files
+COPY public/ ./public/
+
+# Create data directory (which can be mounted as a volume)
+RUN mkdir -p /app/data
 
 # Expose port 80
 EXPOSE 80
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start the server
+CMD ["npm", "start"]

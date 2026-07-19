@@ -1,5 +1,5 @@
 // State Management
-let plans = JSON.parse(localStorage.getItem('intervalTimerPlans')) || [];
+let plans = [];
 let currentPlanId = null;
 let currentExerciseId = null;
 
@@ -15,7 +15,33 @@ function generateId() {
     return '_' + Math.random().toString(36).substr(2, 9);
 }
 
-function saveState() {
+async function loadState() {
+    try {
+        const response = await fetch('/api/plans');
+        if (response.ok) {
+            plans = await response.json();
+            renderDashboard();
+        }
+    } catch (e) {
+        console.error("Failed to load plans from server, falling back to localStorage", e);
+        plans = JSON.parse(localStorage.getItem('intervalTimerPlans')) || [];
+        renderDashboard();
+    }
+}
+
+async function saveState() {
+    try {
+        await fetch('/api/plans', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(plans)
+        });
+    } catch (e) {
+        console.error("Failed to save plans to server, saving to localStorage instead", e);
+    }
+    // Always backup to local storage just in case
     localStorage.setItem('intervalTimerPlans', JSON.stringify(plans));
 }
 
@@ -106,9 +132,22 @@ function renderExerciseList() {
     }
 
     plan.exercises.forEach((ex, index) => {
+        let thumbUrl = '';
+        if (ex.images && ex.images.length > 0) {
+            thumbUrl = ex.images[0];
+        } else if (ex.youtubeUrl) {
+            const ytId = extractYouTubeID(ex.youtubeUrl);
+            if (ytId) {
+                thumbUrl = `https://img.youtube.com/vi/${ytId}/default.jpg`;
+            }
+        }
+
+        const thumbHtml = thumbUrl ? `<img src="${thumbUrl}" alt="thumbnail" class="exercise-thumb">` : `<div class="exercise-thumb placeholder"></div>`;
+
         const div = document.createElement('div');
         div.className = 'exercise-item card';
         div.innerHTML = `
+            ${thumbHtml}
             <div class="item-details" onclick="editExercise('${ex.id}')">
                 <h4>${index + 1}. ${ex.name || 'Unnamed'}</h4>
                 <p>${ex.sets} sets | ${ex.workTime}s work / ${ex.restTime}s rest</p>
@@ -380,7 +419,18 @@ class WorkoutEngine {
             this.speak('Rest');
         } else if (step.phase === 'PREPARE') {
             if (step.exercise) {
-                this.speak(`Next exercise, ${step.exercise.name}`);
+                let prompt = `Next exercise, ${step.exercise.name}. `;
+                if (step.exercise.notes) {
+                    prompt += `${step.exercise.notes}. `;
+                }
+                prompt += `${step.exercise.sets} sets of ${step.exercise.reps} reps. `;
+                prompt += `Work for ${step.exercise.workTime} seconds, `;
+                if (step.exercise.restTime > 0) {
+                    prompt += `rest for ${step.exercise.restTime} seconds.`;
+                } else {
+                    prompt += `no rest.`;
+                }
+                this.speak(prompt);
             }
         } else if (step.phase === 'DONE') {
             this.speak('Workout complete! Great job!');
@@ -407,7 +457,7 @@ class WorkoutEngine {
             this.displayProgress.textContent = '';
             document.getElementById('workoutMediaContainer').classList.add('hidden');
         }
-        
+
         this.updateTimeDisplay();
     }
 
@@ -435,7 +485,7 @@ class WorkoutEngine {
 
         this.isRunning = true;
         this.playPauseBtn.textContent = 'Pause';
-        
+
         this.timerId = setInterval(() => {
             this.timeLeft--;
             this.updateTimeDisplay();
@@ -447,7 +497,7 @@ class WorkoutEngine {
             } else if (this.timeLeft === 1) {
                 this.speak('1');
             }
-            
+
             if (this.timeLeft <= 0) {
                 this.playBeep();
                 this.nextStep();
@@ -521,5 +571,5 @@ document.getElementById('prevPhaseBtn').addEventListener('click', () => {
     if (workoutEngine) workoutEngine.prevStep();
 });
 
-// Initial Render
-renderDashboard();
+// Initial Load
+loadState();

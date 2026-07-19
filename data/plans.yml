@@ -1,0 +1,23 @@
+- id: _cs464d4jn
+  name: Leg Work
+  exercises:
+    - id: _korys1w8i
+      name: Squats
+      notes: ''
+      sets: 1
+      reps: 10
+      workTime: 30
+      restTime: 10
+      images:
+        - https://i.imgur.com/example1.jpg
+        - https://i.imgur.com/example2.jpg
+      youtubeUrl: ''
+    - id: _zvadgwj6w
+      name: Lunges
+      notes: ''
+      sets: 1
+      reps: 10
+      workTime: 30
+      restTime: 10
+      images: []
+      youtubeUrl: https://www.youtube.com/watch?v=dQw4w9WgXcQ

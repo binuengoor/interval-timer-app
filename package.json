@@ -1,0 +1,15 @@
+{
+  "name": "interval-timer-app",
+  "version": "1.0.0",
+  "description": "Comprehensive interval timer for physical therapy and workouts",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.0",
+    "js-yaml": "^4.1.0"
+  },
+  "author": "",
+  "license": "ISC"
+}
