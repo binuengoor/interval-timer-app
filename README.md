@@ -14,7 +14,12 @@ A comprehensive, modern interval timer application tailored for physical therapy
   - View rotating images or YouTube videos in the media container during workouts.
   - Automatically pause other media.
 - **Text-To-Speech (TTS) Prompts**: Uses the Web Speech API to provide audio cues (e.g., "3-2-1 Go", "Rest", and exercise announcements).
-- **Backend YAML Storage**: Plan data is persisted into a local YAML file (`data/plans.yml`) instead of just local storage.
+- **Backend YAML Storage**: Plan data is persisted into local YAML files (`data/plans.yml`, `data/stats.yml`, `data/config.yml`) instead of just local storage.
+- **Progressive Web App (PWA)**: Includes a manifest and service worker, allowing the app to be installed to the home screen.
+- **Wake Lock**: Automatically keeps the screen awake during active workouts.
+- **Image Caching**: Images are proxied and cached locally in `data/assets/` to ensure offline availability and faster load times.
+- **Custom TTS Support**: Configure a custom OpenAI-compatible TTS proxy via `data/config.yml` (falls back to the browser's speech synthesis engine).
+- **Workout Stats**: Tracks the date and time each workout plan is completed.
 
 ## How to Run with Docker Compose
 

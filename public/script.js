@@ -1,5 +1,6 @@
 // State Management
 let plans = [];
+let appConfig = {};
 let currentPlanId = null;
 let currentExerciseId = null;
 
@@ -17,13 +18,18 @@ function generateId() {
 
 async function loadState() {
     try {
+        const configResponse = await fetch('/api/config');
+        if (configResponse.ok) {
+            appConfig = await configResponse.json();
+        }
+
         const response = await fetch('/api/plans');
         if (response.ok) {
             plans = await response.json();
             renderDashboard();
         }
     } catch (e) {
-        console.error("Failed to load plans from server, falling back to localStorage", e);
+        console.error("Failed to load state from server, falling back to localStorage", e);
         plans = JSON.parse(localStorage.getItem('intervalTimerPlans')) || [];
         renderDashboard();
     }
@@ -70,6 +76,7 @@ function renderDashboard() {
                 <p>${plan.exercises.length} exercises</p>
             </div>
             <div class="item-actions">
+                <button class="btn btn-secondary btn-sm" onclick="viewStats('${plan.id}', event)" style="margin-right: 5px;">Stats</button>
                 <button class="btn btn-danger btn-sm" onclick="deletePlan('${plan.id}', event)">Delete</button>
             </div>
         `;
@@ -77,8 +84,65 @@ function renderDashboard() {
     });
 }
 
+// --- Stats Logic ---
+window.viewStats = async function(id, e) {
+    e.stopPropagation();
+    const plan = plans.find(p => p.id === id);
+    if (!plan) return;
+
+    document.getElementById('statsModalTitle').textContent = `${plan.name || 'Untitled'} - Stats`;
+    const content = document.getElementById('statsContent');
+    content.innerHTML = '<p>Loading...</p>';
+    document.getElementById('statsModal').classList.remove('hidden');
+
+    // attach plan id to reset button for later
+    const resetBtn = document.getElementById('resetStatsBtn');
+    resetBtn.dataset.planId = id;
+
+    try {
+        const response = await fetch('/api/stats');
+        const allStats = await response.json();
+        const planStats = allStats[id] || [];
+
+        if (planStats.length === 0) {
+            content.innerHTML = '<p class="text-muted">No completed workouts yet.</p>';
+            return;
+        }
+
+        content.innerHTML = `<ul style="list-style: none; padding: 0;">` +
+            planStats.map(isoString => {
+                const d = new Date(isoString);
+                return `<li style="padding: 5px 0; border-bottom: 1px solid #333;">
+                    ${d.toLocaleDateString()} at ${d.toLocaleTimeString()}
+                </li>`;
+            }).join('') + `</ul>`;
+
+    } catch(err) {
+        content.innerHTML = '<p class="text-danger">Failed to load stats.</p>';
+    }
+}
+
+document.getElementById('closeStatsBtn').addEventListener('click', () => {
+    document.getElementById('statsModal').classList.add('hidden');
+});
+
+document.getElementById('resetStatsBtn').addEventListener('click', async (e) => {
+    const planId = e.target.dataset.planId;
+    if (!planId) return;
+
+    if (confirm("Are you sure you want to clear all stats for this plan?")) {
+        try {
+            await fetch(`/api/plans/${planId}/stats`, { method: 'DELETE' });
+            // refresh view
+            window.viewStats(planId, { stopPropagation: () => {} });
+        } catch(err) {
+            alert("Failed to clear stats.");
+        }
+    }
+});
+
 document.getElementById('createNewPlanBtn').addEventListener('click', () => {
-    const newPlan = { id: generateId(), name: '', exercises: [] };
+    const newPlan = { id: generateId(), name: '', transitionTime: 5, exercises: [] };
     plans.push(newPlan);
     saveState();
     editPlan(newPlan.id);
@@ -97,6 +161,7 @@ function editPlan(id) {
     currentPlanId = id;
     const plan = plans.find(p => p.id === id);
     document.getElementById('planName').value = plan.name;
+    document.getElementById('planTransitionTime').value = plan.transitionTime !== undefined ? plan.transitionTime : 5;
     renderExerciseList();
     showView('planEditor');
 }
@@ -117,6 +182,8 @@ function saveCurrentPlan() {
     const plan = plans.find(p => p.id === currentPlanId);
     if (plan) {
         plan.name = document.getElementById('planName').value;
+        const tt = parseInt(document.getElementById('planTransitionTime').value);
+        plan.transitionTime = isNaN(tt) ? 5 : tt;
         saveState();
     }
 }
@@ -289,18 +356,23 @@ function loadMedia(exercise) {
                 videoId: ytId
             });
         } else {
-            ytPlayer.loadVideoById(ytId);
-            ytPlayer.pauseVideo();
+            if (typeof ytPlayer.cueVideoById === 'function') {
+                ytPlayer.cueVideoById(ytId);
+            } else {
+                ytPlayer.loadVideoById(ytId);
+                ytPlayer.pauseVideo();
+            }
         }
     }
 
     if (hasImages) {
-        workoutImage.src = exercise.images[0];
+        const getImageUrl = (url) => `/api/image?url=${encodeURIComponent(url)}&planId=${currentPlanId}`;
+        workoutImage.src = getImageUrl(exercise.images[0]);
         if (exercise.images.length > 1) {
             let imgIndex = 0;
             imageCycleInterval = setInterval(() => {
                 imgIndex = (imgIndex + 1) % exercise.images.length;
-                workoutImage.src = exercise.images[imgIndex];
+                workoutImage.src = getImageUrl(exercise.images[imgIndex]);
             }, 3000);
         }
     }
@@ -329,6 +401,45 @@ document.getElementById('showVideoBtn').addEventListener('click', showVideo);
 let workoutEngine = null;
 const alarmAudio = document.getElementById('alarm');
 
+let wakeLock = null;
+
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => {
+                console.log('Screen Wake Lock released:', wakeLock.released);
+            });
+            console.log('Screen Wake Lock acquired:', wakeLock !== null);
+        }
+    } catch (err) {
+        console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+    }
+}
+
+function releaseWakeLock() {
+    if (wakeLock !== null) {
+        wakeLock.release().then(() => {
+            wakeLock = null;
+        });
+    }
+}
+
+// Re-request wake lock if document becomes visible again
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+    }
+});
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(err => {
+            console.error('ServiceWorker registration failed: ', err);
+        });
+    });
+}
+
 class WorkoutEngine {
     constructor(plan) {
         this.plan = plan;
@@ -340,15 +451,17 @@ class WorkoutEngine {
 
         this.buildSequence();
         this.initDOM();
+        requestWakeLock();
     }
 
     buildSequence() {
         this.sequence = [];
         this.plan.exercises.forEach((ex, exIndex) => {
             // Prepare phase before each exercise
+            const prepDuration = this.plan.transitionTime !== undefined ? this.plan.transitionTime : 5;
             this.sequence.push({
                 phase: 'PREPARE',
-                duration: 5, // fixed 5 second prep
+                duration: prepDuration, // configured transition time
                 exercise: ex,
                 setNum: 1,
                 totalSets: ex.sets
@@ -387,6 +500,32 @@ class WorkoutEngine {
     }
 
     speak(text) {
+        if (appConfig && appConfig.tts && appConfig.tts.enabled) {
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('TTS proxy failed');
+                return res.blob();
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.play();
+                audio.onended = () => URL.revokeObjectURL(url);
+            })
+            .catch(e => {
+                console.error("Custom TTS failed, falling back to window.speechSynthesis", e);
+                this.fallbackSpeak(text);
+            });
+        } else {
+            this.fallbackSpeak(text);
+        }
+    }
+
+    fallbackSpeak(text) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
@@ -434,6 +573,10 @@ class WorkoutEngine {
             }
         } else if (step.phase === 'DONE') {
             this.speak('Workout complete! Great job!');
+            // Log stat completion
+            if (this.plan && this.plan.id) {
+                fetch(`/api/plans/${this.plan.id}/complete`, { method: 'POST' }).catch(err => console.error("Failed to log stat", err));
+            }
         }
 
         // Update UI Text
@@ -538,6 +681,7 @@ class WorkoutEngine {
 
     stop() {
         this.pause();
+        releaseWakeLock();
     }
 }
 
