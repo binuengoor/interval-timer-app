@@ -16,6 +16,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const dataDir = path.join(__dirname, 'data');
 const dataFile = path.join(dataDir, 'plans.yml');
 const configFile = path.join(dataDir, 'config.yml');
+const statsFile = path.join(dataDir, 'stats.yml');
 const assetsDir = path.join(dataDir, 'assets', 'plans');
 
 // Ensure data directory and file exist
@@ -39,6 +40,10 @@ if (!fs.existsSync(configFile)) {
         }
     };
     fs.writeFileSync(configFile, yaml.dump(defaultConfig));
+}
+
+if (!fs.existsSync(statsFile)) {
+    fs.writeFileSync(statsFile, yaml.dump({})); // Start with empty object
 }
 
 // Cleanup assets task
@@ -114,6 +119,56 @@ app.post('/api/plans', (req, res) => {
     } catch (e) {
         console.error("Error writing YAML:", e);
         res.status(500).json({ error: "Failed to save plans" });
+    }
+});
+
+app.get('/api/stats', (req, res) => {
+    try {
+        const fileContents = fs.readFileSync(statsFile, 'utf8');
+        const data = yaml.load(fileContents) || {};
+        res.json(data);
+    } catch (e) {
+        console.error("Error reading stats YAML:", e);
+        res.status(500).json({ error: "Failed to read stats" });
+    }
+});
+
+app.post('/api/stats', (req, res) => {
+    try {
+        const { planId, timestamp } = req.body;
+        if (!planId || !timestamp) {
+            return res.status(400).json({ error: "Missing planId or timestamp" });
+        }
+
+        const fileContents = fs.readFileSync(statsFile, 'utf8');
+        const data = yaml.load(fileContents) || {};
+        if (!data[planId]) {
+            data[planId] = [];
+        }
+        data[planId].push(timestamp);
+
+        fs.writeFileSync(statsFile, yaml.dump(data), 'utf8');
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Error writing stats YAML:", e);
+        res.status(500).json({ error: "Failed to save stats" });
+    }
+});
+
+app.delete('/api/stats/:planId', (req, res) => {
+    try {
+        const { planId } = req.params;
+        const fileContents = fs.readFileSync(statsFile, 'utf8');
+        const data = yaml.load(fileContents) || {};
+
+        if (data[planId]) {
+            delete data[planId];
+            fs.writeFileSync(statsFile, yaml.dump(data), 'utf8');
+        }
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Error deleting stats:", e);
+        res.status(500).json({ error: "Failed to delete stats" });
     }
 });
 
@@ -195,9 +250,9 @@ app.get('/api/image', async (req, res) => {
             timeout: 5000 // Add timeout
         });
 
-        // Verify content type is an image
+        // Verify content type is an image or octet-stream
         const contentType = response.headers['content-type'];
-        if (!contentType || !contentType.startsWith('image/')) {
+        if (!contentType || (!contentType.startsWith('image/') && !contentType.includes('octet-stream'))) {
             return res.status(400).json({ error: "URL does not point to an image" });
         }
 

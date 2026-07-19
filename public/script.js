@@ -76,6 +76,7 @@ function renderDashboard() {
                 <p>${plan.exercises.length} exercises</p>
             </div>
             <div class="item-actions">
+                <button class="btn btn-primary btn-sm" onclick="showStats('${plan.id}', event)">Stats</button>
                 <button class="btn btn-danger btn-sm" onclick="deletePlan('${plan.id}', event)">Delete</button>
             </div>
         `;
@@ -88,6 +89,59 @@ document.getElementById('createNewPlanBtn').addEventListener('click', () => {
     plans.push(newPlan);
     saveState();
     editPlan(newPlan.id);
+});
+
+let currentStatsPlanId = null;
+
+window.showStats = async function(planId, event) {
+    if (event) event.stopPropagation();
+    currentStatsPlanId = planId;
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+
+    try {
+        const res = await fetch('/api/stats');
+        let stats = {};
+        if (res.ok) {
+            stats = await res.json();
+        }
+
+        const planStats = stats[planId] || [];
+        const content = document.getElementById('statsContent');
+
+        if (planStats.length === 0) {
+            content.innerHTML = '<p class="text-muted">No completed workouts yet.</p>';
+        } else {
+            content.innerHTML = '<ul class="stats-list" style="list-style-type: none; padding: 0;">' +
+                planStats.reverse().map(ts => {
+                    const d = new Date(ts);
+                    return `<li style="padding: 0.5rem 0; border-bottom: 1px solid #333;">${d.toLocaleDateString()} at ${d.toLocaleTimeString()}</li>`;
+                }).join('') + '</ul>';
+        }
+
+        document.getElementById('statsModal').classList.remove('hidden');
+    } catch (e) {
+        console.error("Failed to load stats", e);
+        alert("Failed to load stats");
+    }
+}
+
+document.getElementById('closeStatsBtn').addEventListener('click', () => {
+    document.getElementById('statsModal').classList.add('hidden');
+});
+document.getElementById('closeStatsModalBtn').addEventListener('click', () => {
+    document.getElementById('statsModal').classList.add('hidden');
+});
+document.getElementById('resetStatsBtn').addEventListener('click', async () => {
+    if (!currentStatsPlanId) return;
+    if (confirm("Are you sure you want to reset stats for this plan?")) {
+        try {
+            await fetch(`/api/stats/${currentStatsPlanId}`, { method: 'DELETE' });
+            showStats(currentStatsPlanId); // Refresh modal
+        } catch (e) {
+            console.error("Failed to reset stats", e);
+        }
+    }
 });
 
 window.deletePlan = function(id, e) {
@@ -476,6 +530,18 @@ class WorkoutEngine {
         }
     }
 
+    saveStats() {
+        if (!this.plan || !this.plan.id) return;
+        fetch('/api/stats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                planId: this.plan.id,
+                timestamp: new Date().toISOString()
+            })
+        }).catch(e => console.error("Failed to save stats", e));
+    }
+
     initDOM() {
         this.displayTimer = document.getElementById('timerDisplay');
         this.displayPhase = document.getElementById('phaseDisplay');
@@ -515,6 +581,7 @@ class WorkoutEngine {
             }
         } else if (step.phase === 'DONE') {
             this.speak('Workout complete! Great job!');
+            this.saveStats();
         }
 
         // Update UI Text
