@@ -35,9 +35,7 @@ if (!fs.existsSync(dataFile)) {
 if (!fs.existsSync(configFile)) {
     const defaultConfig = {
         tts: {
-            enabled: false,
-            url: "http://10.1.1.150:8280/v1",
-            voice: "af_heart"
+            voice: "en-US-AriaNeural"
         }
     };
     fs.writeFileSync(configFile, yaml.dump(defaultConfig));
@@ -279,13 +277,24 @@ app.get('/api/image', async (req, res) => {
 
 app.post('/api/tts', async (req, res) => {
     try {
+        const fileContents = fs.readFileSync(configFile, 'utf8');
+        const config = yaml.load(fileContents) || {};
+
         const text = req.body.text;
         if (!text) return res.status(400).json({ error: "Text is required" });
 
         const tempFilePath = path.join(require('os').tmpdir(), `tts-${crypto.randomUUID()}.mp3`);
-        const tts = new EdgeTTS();
 
-        await tts.ttsPromise(text, tempFilePath);
+        const voice = (config.tts && config.tts.voice) ? config.tts.voice : 'en-US-AriaNeural';
+        const tts = new EdgeTTS({ voice: voice });
+
+        try {
+            await tts.ttsPromise(text, tempFilePath);
+        } catch (err) {
+            console.error("EdgeTTS generation error:", err);
+            fs.unlink(tempFilePath, () => {});
+            return res.status(500).json({ error: "TTS generation failed" });
+        }
 
         res.set('Content-Type', 'audio/mpeg');
         const stream = fs.createReadStream(tempFilePath);
