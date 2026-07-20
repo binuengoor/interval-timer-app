@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -20,7 +21,10 @@
         <main id="dashboardView" class="view">
             <header class="app-header">
                 <h1>My Plans</h1>
-                <button id="createNewPlanBtn" class="btn btn-primary">+ New Plan</button>
+                <div>
+                    <button id="editYamlBtn" class="btn btn-secondary">Edit YAML</button>
+                    <button id="createNewPlanBtn" class="btn btn-primary">+ New Plan</button>
+                </div>
             </header>
             <div id="planList" class="plan-list">
                 <!-- Plan items will be injected here -->
@@ -105,6 +109,20 @@
                 <div class="modal-actions">
                     <button id="cancelExerciseBtn" class="btn btn-secondary">Cancel</button>
                     <button id="saveExerciseBtn" class="btn btn-primary">Save Exercise</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- YAML Editor Modal -->
+        <div id="yamlEditorModal" class="modal hidden">
+            <div class="modal-content card" style="width: 90%; max-width: 800px;">
+                <h2>Edit YAML</h2>
+                <div class="input-group">
+                    <textarea id="yamlEditorTextarea" rows="20" style="font-family: monospace; white-space: pre;"></textarea>
+                </div>
+                <div class="modal-actions mt-2">
+                    <button id="cancelYamlBtn" class="btn btn-secondary">Cancel</button>
+                    <button id="saveYamlBtn" class="btn btn-primary">Save YAML</button>
                 </div>
             </div>
         </div>
