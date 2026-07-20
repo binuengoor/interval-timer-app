@@ -91,6 +91,36 @@ document.getElementById('createNewPlanBtn').addEventListener('click', () => {
     editPlan(newPlan.id);
 });
 
+document.getElementById('editYamlBtn').addEventListener('click', () => {
+    if (typeof jsyaml === 'undefined') {
+        alert("js-yaml library is not loaded.");
+        return;
+    }
+    const yamlStr = jsyaml.dump(plans);
+    document.getElementById('yamlEditorTextarea').value = yamlStr;
+    document.getElementById('yamlEditorModal').classList.remove('hidden');
+});
+
+document.getElementById('cancelYamlBtn').addEventListener('click', () => {
+    document.getElementById('yamlEditorModal').classList.add('hidden');
+});
+
+document.getElementById('saveYamlBtn').addEventListener('click', () => {
+    try {
+        const yamlStr = document.getElementById('yamlEditorTextarea').value;
+        const parsedPlans = jsyaml.load(yamlStr);
+        if (!Array.isArray(parsedPlans)) {
+            throw new Error("YAML must represent an array of plans.");
+        }
+        plans = parsedPlans;
+        saveState();
+        renderDashboard();
+        document.getElementById('yamlEditorModal').classList.add('hidden');
+    } catch (e) {
+        alert("Failed to parse YAML: " + e.message);
+    }
+});
+
 let currentStatsPlanId = null;
 
 window.showStats = async function(planId, event) {
@@ -453,19 +483,20 @@ class WorkoutEngine {
     buildSequence() {
         this.sequence = [];
         this.plan.exercises.forEach((ex, exIndex) => {
-            // Prepare phase before each exercise
             const prepDuration = this.plan.transitionTime !== undefined ? this.plan.transitionTime : 5;
-            this.sequence.push({
-                phase: 'PREPARE',
-                duration: prepDuration, // configured transition time
-                exercise: ex,
-                setNum: 1,
-                totalSets: ex.sets,
-                repNum: 1,
-                totalReps: ex.reps
-            });
 
             for (let s = 1; s <= ex.sets; s++) {
+                // Prepare phase before each set (acts as transition between sets and exercises)
+                this.sequence.push({
+                    phase: 'PREPARE',
+                    duration: prepDuration, // configured transition time
+                    exercise: ex,
+                    setNum: s,
+                    totalSets: ex.sets,
+                    repNum: 1,
+                    totalReps: ex.reps
+                });
+
                 for (let r = 1; r <= ex.reps; r++) {
                     this.sequence.push({
                         phase: 'WORK',
@@ -477,8 +508,8 @@ class WorkoutEngine {
                         totalReps: ex.reps
                     });
 
-                    // Add rest phase if it's not the last rep of the current set, OR if it's not the last set, OR if it's not the last exercise
-                    if (ex.restTime > 0 && (r < ex.reps || s < ex.sets || exIndex < this.plan.exercises.length - 1)) {
+                    // Add rest phase if it's not the last rep of the current set
+                    if (ex.restTime > 0 && r < ex.reps) {
                         this.sequence.push({
                             phase: 'REST',
                             duration: ex.restTime,
@@ -572,18 +603,22 @@ class WorkoutEngine {
             this.speak('Rest');
         } else if (step.phase === 'PREPARE') {
             if (step.exercise) {
-                let prompt = `Next exercise, ${step.exercise.name}. `;
-                if (step.exercise.notes) {
-                    prompt += `${step.exercise.notes}. `;
-                }
-                prompt += `${step.exercise.sets} sets of ${step.exercise.reps} reps. `;
-                prompt += `Work for ${step.exercise.workTime} seconds, `;
-                if (step.exercise.restTime > 0) {
-                    prompt += `rest for ${step.exercise.restTime} seconds.`;
+                if (step.setNum === 1) {
+                    let prompt = `Next exercise, ${step.exercise.name}. `;
+                    if (step.exercise.notes) {
+                        prompt += `${step.exercise.notes}. `;
+                    }
+                    prompt += `${step.exercise.sets} sets of ${step.exercise.reps} reps. `;
+                    prompt += `Work for ${step.exercise.workTime} seconds, `;
+                    if (step.exercise.restTime > 0) {
+                        prompt += `rest for ${step.exercise.restTime} seconds.`;
+                    } else {
+                        prompt += `no rest.`;
+                    }
+                    this.speak(prompt);
                 } else {
-                    prompt += `no rest.`;
+                    this.speak(`Set ${step.setNum}`);
                 }
-                this.speak(prompt);
             }
         } else if (step.phase === 'DONE') {
             this.speak('Workout complete! Great job!');
