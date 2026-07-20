@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const axios = require('axios');
+const { EdgeTTS } = require('node-edge-tts');
 const crypto = require('crypto');
 
 const app = express();
@@ -278,31 +279,33 @@ app.get('/api/image', async (req, res) => {
 
 app.post('/api/tts', async (req, res) => {
     try {
-        const fileContents = fs.readFileSync(configFile, 'utf8');
-        const config = yaml.load(fileContents) || {};
-        if (!config.tts || !config.tts.enabled) {
-            return res.status(400).json({ error: "Custom TTS is disabled" });
-        }
-
         const text = req.body.text;
         if (!text) return res.status(400).json({ error: "Text is required" });
 
-        const baseUrl = config.tts.url;
-        // Construct the full url assuming OpenAI compatible audio/speech endpoint
-        const fullUrl = baseUrl.endsWith('/audio/speech') ? baseUrl : `${baseUrl}/audio/speech`;
+        const tempFilePath = path.join(require('os').tmpdir(), `tts-${crypto.randomUUID()}.mp3`);
+        const tts = new EdgeTTS();
 
-        const response = await axios.post(fullUrl, {
-            model: "tts-1", // model is usually required, fallback to tts-1
-            input: text,
-            voice: config.tts.voice || "af_heart"
-        }, {
-            responseType: 'stream'
-        });
+        await tts.ttsPromise(text, tempFilePath);
 
         res.set('Content-Type', 'audio/mpeg');
-        response.data.pipe(res);
+        const stream = fs.createReadStream(tempFilePath);
+
+        stream.pipe(res);
+
+        stream.on('end', () => {
+            fs.unlink(tempFilePath, (err) => {
+                if (err) console.error("Error deleting temp file:", err);
+            });
+        });
+
+        stream.on('error', (err) => {
+            console.error("Stream error:", err);
+            res.status(500).end();
+            fs.unlink(tempFilePath, () => {});
+        });
+
     } catch (e) {
-        console.error("TTS Proxy error:", e.message);
+        console.error("TTS error:", e.message);
         res.status(500).json({ error: "TTS failed" });
     }
 });

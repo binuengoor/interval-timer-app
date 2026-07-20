@@ -496,29 +496,25 @@ class WorkoutEngine {
     }
 
     speak(text) {
-        if (appConfig && appConfig.tts && appConfig.tts.enabled) {
-            fetch('/api/tts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text })
-            })
-            .then(res => {
-                if (!res.ok) throw new Error('TTS proxy failed');
-                return res.blob();
-            })
-            .then(blob => {
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                audio.play();
-                audio.onended = () => URL.revokeObjectURL(url);
-            })
-            .catch(e => {
-                console.error("Custom TTS failed, falling back to window.speechSynthesis", e);
-                this.fallbackSpeak(text);
-            });
-        } else {
+        fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('TTS proxy failed');
+            return res.blob();
+        })
+        .then(blob => {
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.play();
+            audio.onended = () => URL.revokeObjectURL(url);
+        })
+        .catch(e => {
+            console.error("Custom TTS failed, falling back to window.speechSynthesis", e);
             this.fallbackSpeak(text);
-        }
+        });
     }
 
     fallbackSpeak(text) {
