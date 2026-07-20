@@ -1,4 +1,2 @@
 tts:
-  enabled: false
-  url: http://10.1.1.150:8280/v1
-  voice: af_heart
+  voice: en-US-AriaNeural
