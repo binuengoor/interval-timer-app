@@ -460,27 +460,35 @@ class WorkoutEngine {
                 duration: prepDuration, // configured transition time
                 exercise: ex,
                 setNum: 1,
-                totalSets: ex.sets
+                totalSets: ex.sets,
+                repNum: 1,
+                totalReps: ex.reps
             });
 
             for (let s = 1; s <= ex.sets; s++) {
-                this.sequence.push({
-                    phase: 'WORK',
-                    duration: ex.workTime,
-                    exercise: ex,
-                    setNum: s,
-                    totalSets: ex.sets
-                });
-
-                // Add rest phase if it's not the last set, OR if it's not the last exercise
-                if (ex.restTime > 0 && (s < ex.sets || exIndex < this.plan.exercises.length - 1)) {
+                for (let r = 1; r <= ex.reps; r++) {
                     this.sequence.push({
-                        phase: 'REST',
-                        duration: ex.restTime,
+                        phase: 'WORK',
+                        duration: ex.workTime,
                         exercise: ex,
                         setNum: s,
-                        totalSets: ex.sets
+                        totalSets: ex.sets,
+                        repNum: r,
+                        totalReps: ex.reps
                     });
+
+                    // Add rest phase if it's not the last rep of the current set, OR if it's not the last set, OR if it's not the last exercise
+                    if (ex.restTime > 0 && (r < ex.reps || s < ex.sets || exIndex < this.plan.exercises.length - 1)) {
+                        this.sequence.push({
+                            phase: 'REST',
+                            duration: ex.restTime,
+                            exercise: ex,
+                            setNum: s,
+                            totalSets: ex.sets,
+                            repNum: r,
+                            totalReps: ex.reps
+                        });
+                    }
                 }
             }
         });
@@ -491,7 +499,9 @@ class WorkoutEngine {
             duration: 0,
             exercise: null,
             setNum: 0,
-            totalSets: 0
+            totalSets: 0,
+            repNum: 0,
+            totalReps: 0
         });
     }
 
@@ -588,7 +598,7 @@ class WorkoutEngine {
         if (step.exercise) {
             this.displayExerciseName.textContent = step.exercise.name || 'Unnamed Exercise';
             this.displayExerciseNotes.textContent = step.exercise.notes ? `Notes: ${step.exercise.notes}` : '';
-            this.displayProgress.textContent = `Set ${step.setNum} of ${step.totalSets}  |  Reps: ${step.exercise.reps}`;
+            this.displayProgress.textContent = `Set ${step.setNum} of ${step.totalSets}  |  Rep ${step.repNum} of ${step.totalReps}`;
 
             // Only load media if we shifted to a new exercise step
             // to avoid reloading youtube iframe constantly on set changes
