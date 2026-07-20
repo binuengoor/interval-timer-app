@@ -58,7 +58,7 @@ function showView(viewName) {
 
 // --- Navigation & UI ---
 
-function renderDashboard() {
+async function renderDashboard() {
     const list = document.getElementById('planList');
     list.innerHTML = '';
 
@@ -67,13 +67,60 @@ function renderDashboard() {
         return;
     }
 
+    let stats = {};
+    try {
+        const res = await fetch('/api/stats');
+        if (res.ok) {
+            stats = await res.json();
+        }
+    } catch (e) {
+        console.error("Failed to fetch stats for dashboard", e);
+    }
+
     plans.forEach(plan => {
+        const planStats = stats[plan.id] || [];
+        const timesCompleted = planStats.length;
+        let lastCompleteStr = 'Never';
+        if (timesCompleted > 0) {
+            const lastDate = new Date(planStats[planStats.length - 1]);
+            lastCompleteStr = lastDate.toLocaleDateString() + ' ' + lastDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        // Calculate estimated total duration
+        let totalSeconds = 0;
+        const transitionTime = plan.transitionTime !== undefined ? plan.transitionTime : 5;
+
+        plan.exercises.forEach(ex => {
+            const sets = ex.sets || 1;
+            const reps = ex.reps || 1;
+            const work = ex.workTime || 0;
+            const rest = ex.restTime || 0;
+
+            for (let s = 1; s <= sets; s++) {
+                totalSeconds += transitionTime; // PREPARE phase
+                for (let r = 1; r <= reps; r++) {
+                    totalSeconds += work; // WORK phase
+                    if (rest > 0 && r < reps) {
+                        totalSeconds += rest; // REST phase between reps
+                    }
+                }
+            }
+        });
+
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        const durationStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
         const div = document.createElement('div');
         div.className = 'plan-item card';
         div.innerHTML = `
             <div class="item-details" onclick="editPlan('${plan.id}')">
                 <h3>${plan.name || 'Untitled Plan'}</h3>
-                <p>${plan.exercises.length} exercises</p>
+                <p>${plan.exercises.length} exercises &bull; Est. Time: ${durationStr}</p>
+                <div style="font-size: 0.85em; color: var(--muted-color); margin-top: 0.5rem;">
+                    Completed ${timesCompleted} times<br>
+                    Last Complete: ${lastCompleteStr}
+                </div>
             </div>
             <div class="item-actions">
                 <button class="btn btn-primary btn-sm" onclick="showStats('${plan.id}', event)">Stats</button>
