@@ -97,7 +97,11 @@ async function renderDashboard() {
             const rest = ex.restTime || 0;
 
             for (let s = 1; s <= sets; s++) {
-                totalSeconds += transitionTime; // PREPARE phase
+                if (s === 1) {
+                    totalSeconds += transitionTime; // PREPARE phase
+                } else {
+                    totalSeconds += (ex.restBetweenSets || 0); // PREPARE phase (Rest Between Sets)
+                }
                 for (let r = 1; r <= reps; r++) {
                     totalSeconds += work; // WORK phase
                     if (rest > 0 && r < reps) {
@@ -290,7 +294,7 @@ function renderExerciseList() {
             ${thumbHtml}
             <div class="item-details" onclick="editExercise('${ex.id}')">
                 <h4>${index + 1}. ${ex.name || 'Unnamed'}</h4>
-                <p>${ex.sets} sets | ${ex.workTime}s work / ${ex.restTime}s rest</p>
+                <p>${ex.sets} sets | ${ex.reps} reps | ${ex.workTime}s work / ${ex.restTime}s rest</p>
             </div>
             <div class="item-actions">
                 <button class="btn btn-danger btn-sm" onclick="deleteExercise('${ex.id}', event)">X</button>
@@ -308,6 +312,7 @@ document.getElementById('addExerciseBtn').addEventListener('click', () => {
     document.getElementById('exerciseReps').value = '10';
     document.getElementById('exerciseWorkTime').value = '30';
     document.getElementById('exerciseRestTime').value = '10';
+    document.getElementById('exerciseRestBetweenSets').value = '0';
     document.getElementById('exerciseImages').value = '';
     document.getElementById('exerciseYoutube').value = '';
     document.getElementById('exerciseEditorModal').classList.remove('hidden');
@@ -324,6 +329,7 @@ window.editExercise = function(id) {
     document.getElementById('exerciseReps').value = ex.reps;
     document.getElementById('exerciseWorkTime').value = ex.workTime;
     document.getElementById('exerciseRestTime').value = ex.restTime;
+    document.getElementById('exerciseRestBetweenSets').value = ex.restBetweenSets || 0;
     document.getElementById('exerciseImages').value = (ex.images || []).join(', ');
     document.getElementById('exerciseYoutube').value = ex.youtubeUrl || '';
 
@@ -354,6 +360,7 @@ document.getElementById('saveExerciseBtn').addEventListener('click', () => {
         reps: parseInt(document.getElementById('exerciseReps').value) || 10,
         workTime: parseInt(document.getElementById('exerciseWorkTime').value) || 30,
         restTime: parseInt(document.getElementById('exerciseRestTime').value) || 10,
+        restBetweenSets: parseInt(document.getElementById('exerciseRestBetweenSets').value) || 0,
         images: document.getElementById('exerciseImages').value.split(',').map(s=>s.trim()).filter(s=>s),
         youtubeUrl: document.getElementById('exerciseYoutube').value.trim()
     };
@@ -534,15 +541,19 @@ class WorkoutEngine {
 
             for (let s = 1; s <= ex.sets; s++) {
                 // Prepare phase before each set (acts as transition between sets and exercises)
-                this.sequence.push({
-                    phase: 'PREPARE',
-                    duration: prepDuration, // configured transition time
-                    exercise: ex,
-                    setNum: s,
-                    totalSets: ex.sets,
-                    repNum: 1,
-                    totalReps: ex.reps
-                });
+                const phaseDuration = (s === 1) ? prepDuration : (ex.restBetweenSets || 0);
+
+                if (phaseDuration > 0) {
+                    this.sequence.push({
+                        phase: 'PREPARE',
+                        duration: phaseDuration,
+                        exercise: ex,
+                        setNum: s,
+                        totalSets: ex.sets,
+                        repNum: 1,
+                        totalReps: ex.reps
+                    });
+                }
 
                 for (let r = 1; r <= ex.reps; r++) {
                     this.sequence.push({

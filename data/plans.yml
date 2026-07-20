@@ -75,3 +75,17 @@
           https://ptsdev.s3.amazonaws.com/assets/new_images/b45ebcd3-da8e-43de-8ade-587a79da3a33.jpg?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAYL4XK7BB2RNDOA72%2F20260719%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260719T005730Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=5fe2718383ff5a4b11b65cf45fe58282f0ad487f789dd72f6954998eebc1593d
       youtubeUrl: http://www.youtube.com/watch?v=clqjaMIRWfM
   transitionTime: 2
+- id: _q6toestvo
+  name: ''
+  transitionTime: 5
+  exercises:
+    - id: _gnm1thuoa
+      name: Pushups
+      notes: ''
+      sets: 2
+      reps: 15
+      workTime: 30
+      restTime: 10
+      restBetweenSets: 60
+      images: []
+      youtubeUrl: ''
