@@ -4,11 +4,341 @@ let appConfig = {};
 let currentPlanId = null;
 let currentExerciseId = null;
 
+// --- App Settings (Audio, Voice, Haptics) ---
+let appSettings = {
+    voicePrompts: 'full', // 'full' | 'minimal' | 'off'
+    voiceSpeed: 1.1,
+    soundBeeps: true,
+    haptics: true
+};
+
+function loadSettings() {
+    try {
+        const saved = localStorage.getItem('intervalTimerSettings');
+        if (saved) {
+            appSettings = { ...appSettings, ...JSON.parse(saved) };
+        }
+    } catch (e) {
+        console.error("Failed to load settings from localStorage", e);
+    }
+    applySettingsToDOM();
+}
+
+function saveSettings() {
+    try {
+        localStorage.setItem('intervalTimerSettings', JSON.stringify(appSettings));
+    } catch (e) {
+        console.error("Failed to save settings to localStorage", e);
+    }
+}
+
+function applySettingsToDOM() {
+    const voiceSelect = document.getElementById('settingVoicePrompts');
+    const speedInput = document.getElementById('settingVoiceSpeed');
+    const speedVal = document.getElementById('voiceSpeedVal');
+    const beepsCheck = document.getElementById('settingSoundBeeps');
+    const hapticsCheck = document.getElementById('settingHaptics');
+
+    if (voiceSelect) voiceSelect.value = appSettings.voicePrompts;
+    if (speedInput) speedInput.value = appSettings.voiceSpeed;
+    if (speedVal) speedVal.textContent = Number(appSettings.voiceSpeed).toFixed(2);
+    if (beepsCheck) beepsCheck.checked = appSettings.soundBeeps;
+    if (hapticsCheck) hapticsCheck.checked = appSettings.haptics;
+}
+
+function triggerHaptic(pattern = [100]) {
+    if (appSettings.haptics && 'vibrate' in navigator) {
+        try {
+            navigator.vibrate(pattern);
+        } catch (e) {}
+    }
+}
+
 // DOM Elements
 const views = {
     dashboard: document.getElementById('dashboardView'),
     planEditor: document.getElementById('planEditorView'),
     workout: document.getElementById('workoutView')
+};
+
+// --- Toast Notifications ---
+let toastTimeout = null;
+function showToast(message, duration = 2500) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.remove('hidden');
+    
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+    }, duration);
+}
+
+// --- Lightbox Modal State & Logic ---
+let lightboxState = {
+    title: '',
+    images: [],
+    youtubeUrl: '',
+    currentIndex: 0
+};
+
+function openLightbox(exercise, initialIndex = 0) {
+    if (!exercise) return;
+    const hasImages = exercise.images && exercise.images.length > 0;
+    const ytId = extractYouTubeID(exercise.youtubeUrl);
+
+    if (!hasImages && !ytId) {
+        showToast("No media available for this exercise");
+        return;
+    }
+
+    lightboxState = {
+        title: exercise.name || 'Exercise Media',
+        images: exercise.images || [],
+        youtubeUrl: exercise.youtubeUrl || '',
+        currentIndex: initialIndex
+    };
+
+    document.getElementById('lightboxTitle').textContent = lightboxState.title;
+    renderLightboxContent();
+    document.getElementById('mediaLightboxModal').classList.remove('hidden');
+}
+
+function renderLightboxContent() {
+    const wrapper = document.getElementById('lightboxMediaContent');
+    const nav = document.getElementById('lightboxNav');
+    const counter = document.getElementById('lightboxCounter');
+    wrapper.innerHTML = '';
+
+    const hasImages = lightboxState.images.length > 0;
+    const ytId = extractYouTubeID(lightboxState.youtubeUrl);
+
+    if (hasImages) {
+        const total = lightboxState.images.length;
+        const currentUrl = lightboxState.images[lightboxState.currentIndex];
+        const getImageUrl = (url) => `/api/image?url=${encodeURIComponent(url)}&planId=${currentPlanId || ''}`;
+        
+        const img = document.createElement('img');
+        img.src = getImageUrl(currentUrl);
+        img.alt = lightboxState.title;
+        wrapper.appendChild(img);
+
+        if (total > 1) {
+            nav.classList.remove('hidden');
+            counter.textContent = `${lightboxState.currentIndex + 1} / ${total}`;
+        } else {
+            nav.classList.add('hidden');
+        }
+    } else if (ytId) {
+        nav.classList.add('hidden');
+        wrapper.innerHTML = `<iframe src="https://www.youtube.com/embed/${ytId}?autoplay=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+    }
+}
+
+function closeLightbox() {
+    document.getElementById('mediaLightboxModal').classList.add('hidden');
+    document.getElementById('lightboxMediaContent').innerHTML = '';
+}
+
+function lightboxNext() {
+    if (lightboxState.images.length <= 1) return;
+    lightboxState.currentIndex = (lightboxState.currentIndex + 1) % lightboxState.images.length;
+    renderLightboxContent();
+}
+
+function lightboxPrev() {
+    if (lightboxState.images.length <= 1) return;
+    lightboxState.currentIndex = (lightboxState.currentIndex - 1 + lightboxState.images.length) % lightboxState.images.length;
+    renderLightboxContent();
+}
+
+document.getElementById('closeLightboxBtn').addEventListener('click', closeLightbox);
+document.getElementById('lightboxNextBtn').addEventListener('click', lightboxNext);
+document.getElementById('lightboxPrevBtn').addEventListener('click', lightboxPrev);
+
+// --- Curated Preset Workout Templates ---
+const PRESET_TEMPLATES = [
+    {
+        id: 'template_shoulder_mobility',
+        name: 'Shoulder & Neck Mobility (PT)',
+        description: 'Physical therapy routine for relieving shoulder impingement, neck tension, and improving overhead reach.',
+        transitionTime: 5,
+        exercises: [
+            {
+                name: 'Supine Wand Flexion',
+                notes: 'Lie on your back, hold a cane or wand, gently raise arms overhead.',
+                sets: 2,
+                reps: 10,
+                workTime: 10,
+                restTime: 0,
+                bothSides: false,
+                images: [],
+                youtubeUrl: 'http://www.youtube.com/watch?v=LKE2CQfu9WQ'
+            },
+            {
+                name: 'Corner Pec Stretch',
+                notes: 'Stand facing a corner with elbows at shoulder height. Lean gently in.',
+                sets: 1,
+                reps: 5,
+                workTime: 30,
+                restTime: 5,
+                bothSides: false,
+                images: [],
+                youtubeUrl: 'http://www.youtube.com/watch?v=SdjsqyTiHcc'
+            },
+            {
+                name: 'Sleeper Stretch (Internal Rotation)',
+                notes: 'Lie on your side, gently draw forearm toward the table.',
+                sets: 2,
+                reps: 4,
+                workTime: 20,
+                restTime: 5,
+                bothSides: true,
+                images: [],
+                youtubeUrl: 'http://www.youtube.com/watch?v=clqjaMIRWfM'
+            }
+        ]
+    },
+    {
+        id: 'template_core_stability',
+        name: 'Core Stability & Planks (Unilateral)',
+        description: 'Targeted core & anti-rotational exercises with side switches.',
+        transitionTime: 5,
+        exercises: [
+            {
+                name: 'Side Plank Hold',
+                notes: 'Keep hips lifted and body aligned in a straight line.',
+                sets: 3,
+                reps: 1,
+                workTime: 30,
+                restTime: 10,
+                bothSides: true,
+                images: [],
+                youtubeUrl: ''
+            },
+            {
+                name: 'Bird Dog Extensions',
+                notes: 'Opposite arm and leg extended, keep hips level.',
+                sets: 2,
+                reps: 10,
+                workTime: 5,
+                restTime: 2,
+                bothSides: true,
+                images: [],
+                youtubeUrl: ''
+            },
+            {
+                name: 'Dead Bugs',
+                notes: 'Keep lower back pressed flat into the floor.',
+                sets: 3,
+                reps: 12,
+                workTime: 4,
+                restTime: 2,
+                bothSides: false,
+                images: [],
+                youtubeUrl: ''
+            }
+        ]
+    },
+    {
+        id: 'template_desk_stretch',
+        name: 'Desk Ergonomics & Quick Stretch',
+        description: 'Quick 5-minute break routine to reset posture and release wrist/neck strain.',
+        transitionTime: 4,
+        exercises: [
+            {
+                name: 'Seated Spinal Twist',
+                notes: 'Sit upright and twist gently toward the back of your chair.',
+                sets: 1,
+                reps: 2,
+                workTime: 25,
+                restTime: 5,
+                bothSides: true,
+                images: [],
+                youtubeUrl: ''
+            },
+            {
+                name: 'Wrist Extensor & Flexor Stretch',
+                notes: 'Extend arm forward and gently pull fingers backward, then downward.',
+                sets: 1,
+                reps: 2,
+                workTime: 20,
+                restTime: 5,
+                bothSides: true,
+                images: [],
+                youtubeUrl: ''
+            },
+            {
+                name: 'Upper Trapezius Neck Stretch',
+                notes: 'Gently tilt ear toward shoulder without shrugging.',
+                sets: 1,
+                reps: 2,
+                workTime: 25,
+                restTime: 5,
+                bothSides: true,
+                images: [],
+                youtubeUrl: ''
+            }
+        ]
+    },
+    {
+        id: 'template_7min_hiit',
+        name: '7-Minute Full Body Interval',
+        description: 'High-efficiency scientific interval routine with bodyweight movements.',
+        transitionTime: 5,
+        exercises: [
+            { name: 'Jumping Jacks', notes: 'Full range of motion.', sets: 1, reps: 1, workTime: 30, restTime: 10, bothSides: false, images: [], youtubeUrl: '' },
+            { name: 'Wall Sit', notes: 'Thighs parallel to the floor.', sets: 1, reps: 1, workTime: 30, restTime: 10, bothSides: false, images: [], youtubeUrl: '' },
+            { name: 'Pushups', notes: 'Controlled tempo.', sets: 1, reps: 1, workTime: 30, restTime: 10, bothSides: false, images: [], youtubeUrl: '' },
+            { name: 'Step-ups onto Chair/Bench', notes: 'Drive through heel.', sets: 1, reps: 1, workTime: 30, restTime: 10, bothSides: true, images: [], youtubeUrl: '' },
+            { name: 'Plank Hold', notes: 'Engage glutes and core.', sets: 1, reps: 1, workTime: 30, restTime: 10, bothSides: false, images: [], youtubeUrl: '' }
+        ]
+    }
+];
+
+function renderTemplatesList() {
+    const list = document.getElementById('templatesList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    PRESET_TEMPLATES.forEach(tpl => {
+        const div = document.createElement('div');
+        div.className = 'template-card';
+        div.innerHTML = `
+            <div class="template-info">
+                <h4>${tpl.name}</h4>
+                <p>${tpl.description}</p>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                    ${tpl.exercises.length} exercises &bull; ${tpl.transitionTime}s transition
+                </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="importPresetTemplate('${tpl.id}')">+ Add Plan</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+window.importPresetTemplate = function(templateId) {
+    const tpl = PRESET_TEMPLATES.find(t => t.id === templateId);
+    if (!tpl) return;
+
+    const newPlan = {
+        id: generateId(),
+        name: tpl.name,
+        transitionTime: tpl.transitionTime,
+        exercises: tpl.exercises.map(ex => ({
+            ...ex,
+            id: generateId(),
+            restBetweenSets: ex.restBetweenSets || 0
+        }))
+    };
+
+    plans.push(newPlan);
+    saveState();
+    renderDashboard();
+    document.getElementById('templatesModal').classList.add('hidden');
+    showToast(`Added "${tpl.name}" to your plans!`);
 };
 
 // --- Helper Functions ---
@@ -17,6 +347,7 @@ function generateId() {
 }
 
 async function loadState() {
+    loadSettings();
     try {
         const configResponse = await fetch('/api/config');
         if (configResponse.ok) {
@@ -47,7 +378,6 @@ async function saveState() {
     } catch (e) {
         console.error("Failed to save plans to server, saving to localStorage instead", e);
     }
-    // Always backup to local storage just in case
     localStorage.setItem('intervalTimerPlans', JSON.stringify(plans));
 }
 
@@ -56,16 +386,93 @@ function showView(viewName) {
     views[viewName].classList.remove('hidden');
 }
 
+// --- Activity Heatmap & Streak Calculation ---
+function calculateStreakAndStats(statsMap) {
+    const allTimestamps = [];
+    Object.values(statsMap).forEach(tsList => {
+        if (Array.isArray(tsList)) {
+            allTimestamps.push(...tsList);
+        }
+    });
+
+    const totalWorkouts = allTimestamps.length;
+    
+    // Parse distinct dates (YYYY-MM-DD)
+    const dateCounts = {};
+    allTimestamps.forEach(ts => {
+        const d = new Date(ts);
+        if (!isNaN(d)) {
+            const key = d.toISOString().split('T')[0];
+            dateCounts[key] = (dateCounts[key] || 0) + 1;
+        }
+    });
+
+    // Calculate current streak
+    let streak = 0;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    // If worked out today or yesterday, count backwards
+    let checkDate = new Date(now);
+    if (!dateCounts[todayStr] && dateCounts[yesterdayStr]) {
+        checkDate = yesterday;
+    }
+
+    if (dateCounts[todayStr] || dateCounts[yesterdayStr]) {
+        while (true) {
+            const dStr = checkDate.toISOString().split('T')[0];
+            if (dateCounts[dStr]) {
+                streak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+                break;
+            }
+        }
+    }
+
+    // Render 30-Day Activity Heatmap Grid
+    const heatmap = document.getElementById('statsHeatmap');
+    if (heatmap) {
+        heatmap.innerHTML = '';
+        for (let i = 29; i >= 0; i--) {
+            const pastD = new Date(now);
+            pastD.setDate(now.getDate() - i);
+            const pastStr = pastD.toISOString().split('T')[0];
+            const count = dateCounts[pastStr] || 0;
+
+            const cell = document.createElement('div');
+            let levelClass = 'level-0';
+            if (count >= 3) levelClass = 'level-3';
+            else if (count === 2) levelClass = 'level-2';
+            else if (count === 1) levelClass = 'level-1';
+
+            cell.className = `heatmap-cell ${levelClass}`;
+            cell.title = `${pastD.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}: ${count} workout${count === 1 ? '' : 's'}`;
+            heatmap.appendChild(cell);
+        }
+    }
+
+    // Update banner & badges
+    const bannerTotal = document.getElementById('bannerTotalWorkouts');
+    const bannerStreak = document.getElementById('bannerCurrentStreak');
+    const bannerPlans = document.getElementById('bannerTotalPlans');
+    const headerBadge = document.getElementById('headerStreakBadge');
+
+    if (bannerTotal) bannerTotal.textContent = totalWorkouts;
+    if (bannerStreak) bannerStreak.textContent = `${streak} 🔥`;
+    if (bannerPlans) bannerPlans.textContent = plans.length;
+    if (headerBadge) headerBadge.textContent = `🔥 ${streak} Day Streak`;
+}
+
 // --- Navigation & UI ---
 
 async function renderDashboard() {
     const list = document.getElementById('planList');
     list.innerHTML = '';
-
-    if (plans.length === 0) {
-        list.innerHTML = '<p class="text-muted text-center mt-2">No plans yet. Create one!</p>';
-        return;
-    }
 
     let stats = {};
     try {
@@ -75,6 +482,21 @@ async function renderDashboard() {
         }
     } catch (e) {
         console.error("Failed to fetch stats for dashboard", e);
+    }
+
+    calculateStreakAndStats(stats);
+
+    if (plans.length === 0) {
+        list.innerHTML = `
+            <div class="card text-center py-4">
+                <p class="text-muted">No workout plans yet.</p>
+                <div class="mt-2" style="display: flex; gap: 0.5rem; justify-content: center;">
+                    <button class="btn btn-primary" onclick="document.getElementById('createNewPlanBtn').click()">+ Create New Plan</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('openTemplatesBtn').click()">📚 Browse Presets</button>
+                </div>
+            </div>
+        `;
+        return;
     }
 
     plans.forEach(plan => {
@@ -90,22 +512,27 @@ async function renderDashboard() {
         let totalSeconds = 0;
         const transitionTime = plan.transitionTime !== undefined ? plan.transitionTime : 5;
 
-        plan.exercises.forEach(ex => {
+        (plan.exercises || []).forEach(ex => {
             const sets = ex.sets || 1;
             const reps = ex.reps || 1;
             const work = ex.workTime || 0;
             const rest = ex.restTime || 0;
+            const sidesMultiplier = ex.bothSides ? 2 : 1;
 
             for (let s = 1; s <= sets; s++) {
                 if (s === 1) {
-                    totalSeconds += transitionTime; // PREPARE phase
+                    totalSeconds += transitionTime;
                 } else {
-                    totalSeconds += (ex.restBetweenSets || 0); // PREPARE phase (Rest Between Sets)
+                    totalSeconds += (ex.restBetweenSets || 0);
                 }
-                for (let r = 1; r <= reps; r++) {
-                    totalSeconds += work; // WORK phase
-                    if (rest > 0 && r < reps) {
-                        totalSeconds += rest; // REST phase between reps
+
+                for (let side = 0; side < sidesMultiplier; side++) {
+                    if (side > 0) totalSeconds += 4; // short switch cue between sides
+                    for (let r = 1; r <= reps; r++) {
+                        totalSeconds += work;
+                        if (rest > 0 && r < reps) {
+                            totalSeconds += rest;
+                        }
                     }
                 }
             }
@@ -117,13 +544,13 @@ async function renderDashboard() {
 
         const div = document.createElement('div');
         div.className = 'plan-item card';
+        div.onclick = () => editPlan(plan.id);
         div.innerHTML = `
-            <div class="item-details" onclick="editPlan('${plan.id}')">
+            <div class="item-details">
                 <h3>${plan.name || 'Untitled Plan'}</h3>
-                <p>${plan.exercises.length} exercises &bull; Est. Time: ${durationStr}</p>
-                <div style="font-size: 0.85em; color: var(--muted-color); margin-top: 0.5rem;">
-                    Completed ${timesCompleted} times<br>
-                    Last Complete: ${lastCompleteStr}
+                <p>${(plan.exercises || []).length} exercises &bull; Est. Time: ${durationStr}</p>
+                <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.5rem;">
+                    Completed ${timesCompleted} times &bull; Last: ${lastCompleteStr}
                 </div>
             </div>
             <div class="item-actions">
@@ -142,9 +569,114 @@ document.getElementById('createNewPlanBtn').addEventListener('click', () => {
     editPlan(newPlan.id);
 });
 
+// --- Presets Modal ---
+document.getElementById('openTemplatesBtn').addEventListener('click', () => {
+    renderTemplatesList();
+    document.getElementById('templatesModal').classList.remove('hidden');
+});
+document.getElementById('closeTemplatesBtn').addEventListener('click', () => {
+    document.getElementById('templatesModal').classList.add('hidden');
+});
+
+// --- Settings Modal ---
+document.getElementById('openSettingsBtn').addEventListener('click', () => {
+    applySettingsToDOM();
+    document.getElementById('settingsModal').classList.remove('hidden');
+});
+document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+    document.getElementById('settingsModal').classList.add('hidden');
+});
+document.getElementById('settingVoiceSpeed').addEventListener('input', (e) => {
+    document.getElementById('voiceSpeedVal').textContent = Number(e.target.value).toFixed(2);
+});
+document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+    appSettings.voicePrompts = document.getElementById('settingVoicePrompts').value;
+    appSettings.voiceSpeed = parseFloat(document.getElementById('settingVoiceSpeed').value) || 1.1;
+    appSettings.soundBeeps = document.getElementById('settingSoundBeeps').checked;
+    appSettings.haptics = document.getElementById('settingHaptics').checked;
+    saveSettings();
+    document.getElementById('settingsModal').classList.add('hidden');
+    showToast("Settings saved!");
+});
+
+// --- Export & Import Plans ---
+document.getElementById('exportPlansBtn').addEventListener('click', () => {
+    try {
+        let fileContent = '';
+        let fileName = 'interval-timer-plans.yml';
+        let mimeType = 'text/yaml';
+
+        if (typeof jsyaml !== 'undefined') {
+            fileContent = jsyaml.dump(plans);
+        } else {
+            fileContent = JSON.stringify(plans, null, 2);
+            fileName = 'interval-timer-plans.json';
+            mimeType = 'application/json';
+        }
+
+        const blob = new Blob([fileContent], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("Plans exported successfully!");
+    } catch (e) {
+        showToast("Export failed: " + e.message);
+    }
+});
+
+document.getElementById('importPlansBtn').addEventListener('click', () => {
+    document.getElementById('importFileInput').click();
+});
+
+document.getElementById('importFileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const content = event.target.result;
+            let parsed = null;
+            if (file.name.endsWith('.json')) {
+                parsed = JSON.parse(content);
+            } else if (typeof jsyaml !== 'undefined') {
+                parsed = jsyaml.load(content);
+            } else {
+                parsed = JSON.parse(content);
+            }
+
+            if (!Array.isArray(parsed)) {
+                throw new Error("File must contain a list of plans.");
+            }
+
+            // Ensure unique IDs
+            parsed.forEach(p => {
+                if (!p.id) p.id = generateId();
+                (p.exercises || []).forEach(ex => {
+                    if (!ex.id) ex.id = generateId();
+                });
+            });
+
+            plans = parsed;
+            saveState();
+            renderDashboard();
+            showToast(`Successfully imported ${plans.length} plan(s)!`);
+        } catch (err) {
+            showToast("Import error: " + err.message);
+        }
+        e.target.value = '';
+    };
+    reader.readAsText(file);
+});
+
 document.getElementById('editYamlBtn').addEventListener('click', () => {
     if (typeof jsyaml === 'undefined') {
-        alert("js-yaml library is not loaded.");
+        showToast("YAML library is not loaded.");
         return;
     }
     const yamlStr = jsyaml.dump(plans);
@@ -167,8 +699,9 @@ document.getElementById('saveYamlBtn').addEventListener('click', () => {
         saveState();
         renderDashboard();
         document.getElementById('yamlEditorModal').classList.add('hidden');
+        showToast("Plans updated from YAML!");
     } catch (e) {
-        alert("Failed to parse YAML: " + e.message);
+        showToast("YAML Error: " + e.message);
     }
 });
 
@@ -187,23 +720,28 @@ window.showStats = async function(planId, event) {
             stats = await res.json();
         }
 
+        calculateStreakAndStats(stats);
+
         const planStats = stats[planId] || [];
         const content = document.getElementById('statsContent');
 
         if (planStats.length === 0) {
-            content.innerHTML = '<p class="text-muted">No completed workouts yet.</p>';
+            content.innerHTML = '<p class="text-muted text-center py-2">No completed workouts recorded for this plan yet.</p>';
         } else {
             content.innerHTML = '<ul class="stats-list" style="list-style-type: none; padding: 0;">' +
-                planStats.reverse().map(ts => {
+                planStats.slice().reverse().map(ts => {
                     const d = new Date(ts);
-                    return `<li style="padding: 0.5rem 0; border-bottom: 1px solid #333;">${d.toLocaleDateString()} at ${d.toLocaleTimeString()}</li>`;
+                    return `<li style="padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <span>${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <span style="color: var(--text-muted); font-size: 0.875rem;">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </li>`;
                 }).join('') + '</ul>';
         }
 
         document.getElementById('statsModal').classList.remove('hidden');
     } catch (e) {
         console.error("Failed to load stats", e);
-        alert("Failed to load stats");
+        showToast("Failed to load stats");
     }
 }
 
@@ -215,33 +753,41 @@ document.getElementById('closeStatsModalBtn').addEventListener('click', () => {
 });
 document.getElementById('resetStatsBtn').addEventListener('click', async () => {
     if (!currentStatsPlanId) return;
-    if (confirm("Are you sure you want to reset stats for this plan?")) {
+    if (confirm("Are you sure you want to reset completion stats for this plan?")) {
         try {
             await fetch(`/api/stats/${currentStatsPlanId}`, { method: 'DELETE' });
-            showStats(currentStatsPlanId); // Refresh modal
+            showStats(currentStatsPlanId);
+            showToast("Stats reset");
+            renderDashboard();
         } catch (e) {
             console.error("Failed to reset stats", e);
+            showToast("Failed to reset stats");
         }
     }
 });
 
 window.deletePlan = function(id, e) {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if(confirm('Delete this plan?')) {
         plans = plans.filter(p => p.id !== id);
         saveState();
         renderDashboard();
+        showToast("Plan deleted");
     }
 }
 
 function editPlan(id) {
     currentPlanId = id;
     const plan = plans.find(p => p.id === id);
-    document.getElementById('planName').value = plan.name;
+    if (!plan) return;
+    document.getElementById('planName').value = plan.name || '';
     document.getElementById('planTransitionTime').value = plan.transitionTime !== undefined ? plan.transitionTime : 5;
     renderExerciseList();
     showView('planEditor');
 }
+
+document.getElementById('planName').addEventListener('input', saveCurrentPlan);
+document.getElementById('planTransitionTime').addEventListener('input', saveCurrentPlan);
 
 document.getElementById('backToDashboardBtn').addEventListener('click', () => {
     saveCurrentPlan();
@@ -251,7 +797,7 @@ document.getElementById('backToDashboardBtn').addEventListener('click', () => {
 
 document.getElementById('savePlanBtn').addEventListener('click', () => {
     saveCurrentPlan();
-    alert('Plan saved!');
+    showToast('Plan settings saved!');
 });
 
 function saveCurrentPlan() {
@@ -265,12 +811,60 @@ function saveCurrentPlan() {
     }
 }
 
+window.openExerciseLightbox = function(exerciseId, e) {
+    if (e) e.stopPropagation();
+    const plan = plans.find(p => p.id === currentPlanId);
+    if (!plan) return;
+    const exercise = plan.exercises.find(ex => ex.id === exerciseId);
+    if (exercise) {
+        openLightbox(exercise);
+    }
+};
+
+window.moveExercise = function(exerciseId, direction, e) {
+    if (e) e.stopPropagation();
+    const plan = plans.find(p => p.id === currentPlanId);
+    if (!plan) return;
+
+    const index = plan.exercises.findIndex(ex => ex.id === exerciseId);
+    if (index === -1) return;
+
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= plan.exercises.length) return;
+
+    const [moved] = plan.exercises.splice(index, 1);
+    plan.exercises.splice(newIndex, 0, moved);
+
+    saveState();
+    renderExerciseList();
+};
+
+window.duplicateExercise = function(exerciseId, e) {
+    if (e) e.stopPropagation();
+    const plan = plans.find(p => p.id === currentPlanId);
+    if (!plan) return;
+
+    const ex = plan.exercises.find(e => e.id === exerciseId);
+    if (!ex) return;
+
+    const cloned = JSON.parse(JSON.stringify(ex));
+    cloned.id = generateId();
+    cloned.name = (cloned.name || 'Exercise') + ' (Copy)';
+
+    const index = plan.exercises.findIndex(e => e.id === exerciseId);
+    plan.exercises.splice(index + 1, 0, cloned);
+
+    saveState();
+    renderExerciseList();
+    showToast("Exercise duplicated");
+};
+
 function renderExerciseList() {
     const plan = plans.find(p => p.id === currentPlanId);
     const list = document.getElementById('exerciseList');
     list.innerHTML = '';
 
-    if (plan.exercises.length === 0) {
+    if (!plan || !plan.exercises || plan.exercises.length === 0) {
         list.innerHTML = '<p class="text-muted text-center mt-2">No exercises added yet.</p>';
         return;
     }
@@ -278,7 +872,7 @@ function renderExerciseList() {
     plan.exercises.forEach((ex, index) => {
         let thumbUrl = '';
         if (ex.images && ex.images.length > 0) {
-            thumbUrl = ex.images[0];
+            thumbUrl = `/api/image?url=${encodeURIComponent(ex.images[0])}&planId=${currentPlanId}`;
         } else if (ex.youtubeUrl) {
             const ytId = extractYouTubeID(ex.youtubeUrl);
             if (ytId) {
@@ -286,18 +880,32 @@ function renderExerciseList() {
             }
         }
 
-        const thumbHtml = thumbUrl ? `<img src="${thumbUrl}" alt="thumbnail" class="exercise-thumb">` : `<div class="exercise-thumb placeholder"></div>`;
+        const thumbHtml = thumbUrl 
+            ? `<div class="exercise-thumb-wrapper" onclick="openExerciseLightbox('${ex.id}', event)" title="Click to view large preview">
+                <img src="${thumbUrl}" alt="thumbnail" class="exercise-thumb">
+                <span class="thumb-zoom-badge">🔍</span>
+               </div>` 
+            : `<div class="exercise-thumb-wrapper" onclick="editExercise('${ex.id}')"><div class="exercise-thumb placeholder">No Media</div></div>`;
+
+        const isFirst = index === 0;
+        const isLast = index === plan.exercises.length - 1;
+        const notesPreview = ex.notes ? `<div class="item-notes-preview">${ex.notes}</div>` : '';
+        const sideBadge = ex.bothSides ? `<span class="badge badge-side" style="margin-left: 0.35rem; font-size: 0.7rem; padding: 2px 6px;">2 Sides</span>` : '';
 
         const div = document.createElement('div');
         div.className = 'exercise-item card';
         div.innerHTML = `
             ${thumbHtml}
             <div class="item-details" onclick="editExercise('${ex.id}')">
-                <h4>${index + 1}. ${ex.name || 'Unnamed'}</h4>
-                <p>${ex.sets} sets | ${ex.reps} reps | ${ex.workTime}s work / ${ex.restTime}s rest</p>
+                <h4>${index + 1}. ${ex.name || 'Unnamed'}${sideBadge}</h4>
+                <p>${ex.sets} sets &bull; ${ex.reps} reps &bull; ${ex.workTime}s work / ${ex.restTime}s rest${ex.restBetweenSets ? ` / ${ex.restBetweenSets}s set rest` : ''}</p>
+                ${notesPreview}
             </div>
             <div class="item-actions">
-                <button class="btn btn-danger btn-sm" onclick="deleteExercise('${ex.id}', event)">X</button>
+                <button class="btn-reorder" onclick="moveExercise('${ex.id}', -1, event)" ${isFirst ? 'disabled' : ''} title="Move Up">&uarr;</button>
+                <button class="btn-reorder" onclick="moveExercise('${ex.id}', 1, event)" ${isLast ? 'disabled' : ''} title="Move Down">&darr;</button>
+                <button class="btn btn-secondary btn-sm" onclick="duplicateExercise('${ex.id}', event)" title="Duplicate Exercise">&#10697;</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteExercise('${ex.id}', event)" title="Delete Exercise">&times;</button>
             </div>
         `;
         list.appendChild(div);
@@ -305,7 +913,7 @@ function renderExerciseList() {
 }
 
 document.getElementById('addExerciseBtn').addEventListener('click', () => {
-    currentExerciseId = null; // New exercise
+    currentExerciseId = null;
     document.getElementById('exerciseName').value = '';
     document.getElementById('exerciseNotes').value = '';
     document.getElementById('exerciseSets').value = '1';
@@ -313,6 +921,7 @@ document.getElementById('addExerciseBtn').addEventListener('click', () => {
     document.getElementById('exerciseWorkTime').value = '30';
     document.getElementById('exerciseRestTime').value = '10';
     document.getElementById('exerciseRestBetweenSets').value = '0';
+    document.getElementById('exerciseBothSides').checked = false;
     document.getElementById('exerciseImages').value = '';
     document.getElementById('exerciseYoutube').value = '';
     document.getElementById('exerciseEditorModal').classList.remove('hidden');
@@ -322,29 +931,32 @@ window.editExercise = function(id) {
     currentExerciseId = id;
     const plan = plans.find(p => p.id === currentPlanId);
     const ex = plan.exercises.find(e => e.id === id);
+    if (!ex) return;
 
-    document.getElementById('exerciseName').value = ex.name;
+    document.getElementById('exerciseName').value = ex.name || '';
     document.getElementById('exerciseNotes').value = ex.notes || '';
-    document.getElementById('exerciseSets').value = ex.sets;
-    document.getElementById('exerciseReps').value = ex.reps;
-    document.getElementById('exerciseWorkTime').value = ex.workTime;
-    document.getElementById('exerciseRestTime').value = ex.restTime;
+    document.getElementById('exerciseSets').value = ex.sets !== undefined ? ex.sets : 1;
+    document.getElementById('exerciseReps').value = ex.reps !== undefined ? ex.reps : 10;
+    document.getElementById('exerciseWorkTime').value = ex.workTime !== undefined ? ex.workTime : 30;
+    document.getElementById('exerciseRestTime').value = ex.restTime !== undefined ? ex.restTime : 10;
     document.getElementById('exerciseRestBetweenSets').value = ex.restBetweenSets || 0;
+    document.getElementById('exerciseBothSides').checked = !!ex.bothSides;
     document.getElementById('exerciseImages').value = (ex.images || []).join(', ');
     document.getElementById('exerciseYoutube').value = ex.youtubeUrl || '';
 
     document.getElementById('exerciseEditorModal').classList.remove('hidden');
-}
+};
 
 window.deleteExercise = function(id, e) {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if(confirm('Delete exercise?')) {
         const plan = plans.find(p => p.id === currentPlanId);
         plan.exercises = plan.exercises.filter(ex => ex.id !== id);
         saveState();
         renderExerciseList();
+        showToast("Exercise deleted");
     }
-}
+};
 
 document.getElementById('cancelExerciseBtn').addEventListener('click', () => {
     document.getElementById('exerciseEditorModal').classList.add('hidden');
@@ -352,26 +964,28 @@ document.getElementById('cancelExerciseBtn').addEventListener('click', () => {
 
 document.getElementById('saveExerciseBtn').addEventListener('click', () => {
     const plan = plans.find(p => p.id === currentPlanId);
+    if (!plan) return;
 
     const exData = {
-        name: document.getElementById('exerciseName').value,
-        notes: document.getElementById('exerciseNotes').value,
+        name: document.getElementById('exerciseName').value.trim() || 'Exercise',
+        notes: document.getElementById('exerciseNotes').value.trim(),
         sets: parseInt(document.getElementById('exerciseSets').value) || 1,
         reps: parseInt(document.getElementById('exerciseReps').value) || 10,
         workTime: parseInt(document.getElementById('exerciseWorkTime').value) || 30,
         restTime: parseInt(document.getElementById('exerciseRestTime').value) || 10,
         restBetweenSets: parseInt(document.getElementById('exerciseRestBetweenSets').value) || 0,
+        bothSides: document.getElementById('exerciseBothSides').checked,
         images: document.getElementById('exerciseImages').value.split(',').map(s=>s.trim()).filter(s=>s),
         youtubeUrl: document.getElementById('exerciseYoutube').value.trim()
     };
 
     if (currentExerciseId) {
-        // Update
         const exIndex = plan.exercises.findIndex(e => e.id === currentExerciseId);
         plan.exercises[exIndex] = { ...plan.exercises[exIndex], ...exData };
+        showToast("Exercise updated");
     } else {
-        // Create
         plan.exercises.push({ id: generateId(), ...exData });
+        showToast("Exercise added");
     }
 
     saveState();
@@ -379,10 +993,13 @@ document.getElementById('saveExerciseBtn').addEventListener('click', () => {
     document.getElementById('exerciseEditorModal').classList.add('hidden');
 });
 
+
 // --- Media Logic (YouTube and Images) ---
 let ytPlayer = null;
 let ytReady = false;
 let imageCycleInterval = null;
+let currentWorkoutExercise = null;
+let currentWorkoutImageIndex = 0;
 
 window.onYouTubeIframeAPIReady = function() {
     ytReady = true;
@@ -396,18 +1013,25 @@ function extractYouTubeID(url) {
 }
 
 function loadMedia(exercise) {
+    currentWorkoutExercise = exercise;
+    currentWorkoutImageIndex = 0;
+
     const mediaContainer = document.getElementById('workoutMediaContainer');
     const toggle = document.getElementById('mediaToggle');
     const ytContainer = document.getElementById('youtubeContainer');
     const imgContainer = document.getElementById('imageCycleContainer');
     const workoutImage = document.getElementById('workoutImage');
+    const dotsContainer = document.getElementById('imagePaginationDots');
 
     clearInterval(imageCycleInterval);
     if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
         ytPlayer.stopVideo();
     }
 
-    if (!exercise) return;
+    if (!exercise) {
+        mediaContainer.classList.add('hidden');
+        return;
+    }
 
     const hasImages = exercise.images && exercise.images.length > 0;
     const ytId = extractYouTubeID(exercise.youtubeUrl);
@@ -448,15 +1072,39 @@ function loadMedia(exercise) {
     if (hasImages) {
         const getImageUrl = (url) => `/api/image?url=${encodeURIComponent(url)}&planId=${currentPlanId}`;
         workoutImage.src = getImageUrl(exercise.images[0]);
+
+        // Render pagination dots
+        dotsContainer.innerHTML = '';
         if (exercise.images.length > 1) {
-            let imgIndex = 0;
+            dotsContainer.classList.remove('hidden');
+            exercise.images.forEach((_, idx) => {
+                const dot = document.createElement('div');
+                dot.className = `dot ${idx === 0 ? 'active' : ''}`;
+                dotsContainer.appendChild(dot);
+            });
+
             imageCycleInterval = setInterval(() => {
-                imgIndex = (imgIndex + 1) % exercise.images.length;
-                workoutImage.src = getImageUrl(exercise.images[imgIndex]);
+                currentWorkoutImageIndex = (currentWorkoutImageIndex + 1) % exercise.images.length;
+                workoutImage.src = getImageUrl(exercise.images[currentWorkoutImageIndex]);
+                
+                const dots = dotsContainer.querySelectorAll('.dot');
+                dots.forEach((d, idx) => {
+                    d.classList.toggle('active', idx === currentWorkoutImageIndex);
+                });
             }, 3000);
+        } else {
+            dotsContainer.classList.add('hidden');
         }
+    } else {
+        dotsContainer.classList.add('hidden');
     }
 }
+
+document.getElementById('imageCycleContainer').addEventListener('click', () => {
+    if (currentWorkoutExercise) {
+        openLightbox(currentWorkoutExercise, currentWorkoutImageIndex);
+    }
+});
 
 function showImages() {
     document.getElementById('showImageBtn').classList.add('active');
@@ -480,7 +1128,6 @@ document.getElementById('showVideoBtn').addEventListener('click', showVideo);
 // --- Core Interval Timer Logic ---
 let workoutEngine = null;
 const alarmAudio = document.getElementById('alarm');
-
 let wakeLock = null;
 
 async function requestWakeLock() {
@@ -490,7 +1137,6 @@ async function requestWakeLock() {
             wakeLock.addEventListener('release', () => {
                 console.log('Screen Wake Lock released:', wakeLock.released);
             });
-            console.log('Screen Wake Lock acquired:', wakeLock !== null);
         }
     } catch (err) {
         console.error(`Wake Lock error: ${err.name}, ${err.message}`);
@@ -505,7 +1151,6 @@ function releaseWakeLock() {
     }
 }
 
-// Re-request wake lock if document becomes visible again
 document.addEventListener('visibilitychange', async () => {
     if (wakeLock !== null && document.visibilityState === 'visible') {
         await requestWakeLock();
@@ -523,7 +1168,7 @@ if ('serviceWorker' in navigator) {
 class WorkoutEngine {
     constructor(plan) {
         this.plan = plan;
-        this.sequence = []; // array of { phase, duration, exercise, setNum, totalSets }
+        this.sequence = [];
         this.currentIndex = 0;
         this.timeLeft = 0;
         this.timerId = null;
@@ -536,65 +1181,91 @@ class WorkoutEngine {
 
     buildSequence() {
         this.sequence = [];
-        this.plan.exercises.forEach((ex, exIndex) => {
+        const totalExercises = (this.plan.exercises || []).length;
+
+        (this.plan.exercises || []).forEach((ex, exIndex) => {
             const prepDuration = this.plan.transitionTime !== undefined ? this.plan.transitionTime : 5;
+            const sides = ex.bothSides ? ['LEFT', 'RIGHT'] : [null];
 
             for (let s = 1; s <= ex.sets; s++) {
-                // Prepare phase before each set (acts as transition between sets and exercises)
-                const phaseDuration = (s === 1) ? prepDuration : (ex.restBetweenSets || 0);
+                const isFirstSetOfExercise = (s === 1);
 
-                if (phaseDuration > 0) {
-                    this.sequence.push({
-                        phase: 'PREPARE',
-                        duration: phaseDuration,
-                        exercise: ex,
-                        setNum: s,
-                        totalSets: ex.sets,
-                        repNum: 1,
-                        totalReps: ex.reps
-                    });
-                }
+                sides.forEach((side, sideIdx) => {
+                    let phaseDuration = 0;
+                    if (isFirstSetOfExercise && sideIdx === 0) {
+                        phaseDuration = prepDuration;
+                    } else if (sideIdx > 0) {
+                        phaseDuration = 4; // Switch side transition
+                    } else {
+                        phaseDuration = (ex.restBetweenSets || 0);
+                    }
 
-                for (let r = 1; r <= ex.reps; r++) {
-                    this.sequence.push({
-                        phase: 'WORK',
-                        duration: ex.workTime,
-                        exercise: ex,
-                        setNum: s,
-                        totalSets: ex.sets,
-                        repNum: r,
-                        totalReps: ex.reps
-                    });
-
-                    // Add rest phase if it's not the last rep of the current set
-                    if (ex.restTime > 0 && r < ex.reps) {
+                    if (phaseDuration > 0) {
                         this.sequence.push({
-                            phase: 'REST',
-                            duration: ex.restTime,
+                            phase: 'PREPARE',
+                            duration: phaseDuration,
                             exercise: ex,
+                            exIndex: exIndex + 1,
+                            totalExercises: totalExercises,
+                            setNum: s,
+                            totalSets: ex.sets,
+                            repNum: 1,
+                            totalReps: ex.reps,
+                            side: side
+                        });
+                    }
+
+                    for (let r = 1; r <= ex.reps; r++) {
+                        this.sequence.push({
+                            phase: 'WORK',
+                            duration: ex.workTime,
+                            exercise: ex,
+                            exIndex: exIndex + 1,
+                            totalExercises: totalExercises,
                             setNum: s,
                             totalSets: ex.sets,
                             repNum: r,
-                            totalReps: ex.reps
+                            totalReps: ex.reps,
+                            side: side
                         });
+
+                        if (ex.restTime > 0 && r < ex.reps) {
+                            this.sequence.push({
+                                phase: 'REST',
+                                duration: ex.restTime,
+                                exercise: ex,
+                                exIndex: exIndex + 1,
+                                totalExercises: totalExercises,
+                                setNum: s,
+                                totalSets: ex.sets,
+                                repNum: r,
+                                totalReps: ex.reps,
+                                side: side
+                            });
+                        }
                     }
-                }
+                });
             }
         });
 
-        // Add final Done phase
+        // Final Done phase
         this.sequence.push({
             phase: 'DONE',
             duration: 0,
             exercise: null,
+            exIndex: totalExercises,
+            totalExercises: totalExercises,
             setNum: 0,
             totalSets: 0,
             repNum: 0,
-            totalReps: 0
+            totalReps: 0,
+            side: null
         });
     }
 
     speak(text) {
+        if (appSettings.voicePrompts === 'off') return;
+
         fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -607,6 +1278,7 @@ class WorkoutEngine {
         .then(blob => {
             const url = URL.createObjectURL(blob);
             const audio = new Audio(url);
+            audio.playbackRate = appSettings.voiceSpeed || 1.1;
             audio.play();
             audio.onended = () => URL.revokeObjectURL(url);
         })
@@ -617,10 +1289,11 @@ class WorkoutEngine {
     }
 
     fallbackSpeak(text) {
+        if (appSettings.voicePrompts === 'off') return;
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.1;
+            utterance.rate = appSettings.voiceSpeed || 1.1;
             window.speechSynthesis.speak(utterance);
         }
     }
@@ -644,38 +1317,58 @@ class WorkoutEngine {
         this.displayExerciseName = document.getElementById('workoutExerciseName');
         this.displayExerciseNotes = document.getElementById('workoutExerciseNotes');
         this.displayProgress = document.getElementById('workoutProgress');
+        this.sideBadge = document.getElementById('workoutSideBadge');
+        this.exerciseCounter = document.getElementById('workoutExerciseCounter');
+        this.progressBar = document.getElementById('workoutProgressBar');
+        this.timerRing = document.getElementById('timerRingProgress');
         this.playPauseBtn = document.getElementById('playPauseBtn');
 
         this.displayPlanName.textContent = this.plan.name || 'Workout';
         this.loadCurrentStep();
     }
 
+    updateOverallProgress() {
+        const totalSteps = Math.max(1, this.sequence.length - 1);
+        const progressPct = Math.min(100, Math.round((this.currentIndex / totalSteps) * 100));
+        if (this.progressBar) {
+            this.progressBar.style.width = `${progressPct}%`;
+        }
+    }
+
     loadCurrentStep() {
         const step = this.sequence[this.currentIndex];
         this.timeLeft = step.duration;
 
-        // Announce phase
+        triggerHaptic([150, 80, 150]);
+
+        // Audio Announcements based on settings
         if (step.phase === 'WORK') {
             this.speak('Go');
         } else if (step.phase === 'REST') {
             this.speak('Rest');
         } else if (step.phase === 'PREPARE') {
             if (step.exercise) {
-                if (step.setNum === 1) {
-                    let prompt = `Next exercise, ${step.exercise.name}. `;
-                    if (step.exercise.notes) {
-                        prompt += `${step.exercise.notes}. `;
-                    }
-                    prompt += `${step.exercise.sets} sets of ${step.exercise.reps} reps. `;
-                    prompt += `Work for ${step.exercise.workTime} seconds, `;
-                    if (step.exercise.restTime > 0) {
-                        prompt += `rest for ${step.exercise.restTime} seconds.`;
+                if (appSettings.voicePrompts === 'minimal') {
+                    if (step.side) {
+                        this.speak(step.side === 'LEFT' ? 'Left side' : 'Right side');
                     } else {
-                        prompt += `no rest.`;
+                        this.speak('Get ready');
                     }
-                    this.speak(prompt);
                 } else {
-                    this.speak(`Set ${step.setNum}`);
+                    if (step.side === 'RIGHT') {
+                        this.speak('Switch sides, Right side');
+                    } else if (step.setNum === 1) {
+                        let prompt = `Next exercise, ${step.exercise.name}. `;
+                        if (step.side) prompt += `${step.side} side first. `;
+                        if (step.exercise.notes) prompt += `${step.exercise.notes}. `;
+                        prompt += `${step.exercise.sets} sets of ${step.exercise.reps} reps. `;
+                        prompt += `Work for ${step.exercise.workTime} seconds.`;
+                        this.speak(prompt);
+                    } else {
+                        let prompt = `Set ${step.setNum}`;
+                        if (step.side) prompt += `, ${step.side} side`;
+                        this.speak(prompt);
+                    }
                 }
             }
         } else if (step.phase === 'DONE') {
@@ -683,18 +1376,28 @@ class WorkoutEngine {
             this.saveStats();
         }
 
-        // Update UI Text
+        // Update UI Elements
         this.displayPhase.textContent = step.phase;
         this.displayPhase.className = `phase-label phase-${step.phase.toLowerCase()}`;
         this.displayTimer.className = `display phase-${step.phase.toLowerCase()}`;
+
+        if (this.sideBadge) {
+            if (step.side) {
+                this.sideBadge.textContent = `${step.side} SIDE`;
+                this.sideBadge.classList.remove('hidden');
+            } else {
+                this.sideBadge.classList.add('hidden');
+            }
+        }
 
         if (step.exercise) {
             this.displayExerciseName.textContent = step.exercise.name || 'Unnamed Exercise';
             this.displayExerciseNotes.textContent = step.exercise.notes ? `Notes: ${step.exercise.notes}` : '';
             this.displayProgress.textContent = `Set ${step.setNum} of ${step.totalSets}  |  Rep ${step.repNum} of ${step.totalReps}`;
+            if (this.exerciseCounter) {
+                this.exerciseCounter.textContent = `Exercise ${step.exIndex} of ${step.totalExercises}`;
+            }
 
-            // Only load media if we shifted to a new exercise step
-            // to avoid reloading youtube iframe constantly on set changes
             if (this.currentIndex === 0 || this.sequence[this.currentIndex - 1].exercise?.id !== step.exercise.id) {
                 loadMedia(step.exercise);
             }
@@ -702,9 +1405,12 @@ class WorkoutEngine {
             this.displayExerciseName.textContent = 'Workout Complete!';
             this.displayExerciseNotes.textContent = '';
             this.displayProgress.textContent = '';
+            if (this.sideBadge) this.sideBadge.classList.add('hidden');
+            if (this.exerciseCounter) this.exerciseCounter.textContent = 'Done';
             document.getElementById('workoutMediaContainer').classList.add('hidden');
         }
 
+        this.updateOverallProgress();
         this.updateTimeDisplay();
     }
 
@@ -715,10 +1421,21 @@ class WorkoutEngine {
     }
 
     updateTimeDisplay() {
+        const step = this.sequence[this.currentIndex];
         this.displayTimer.textContent = this.formatTime(this.timeLeft);
+
+        // Update Circular SVG Timer Ring
+        if (this.timerRing) {
+            const circumference = 596.9; // 2 * PI * 95
+            const fraction = (step && step.duration > 0) ? (this.timeLeft / step.duration) : 0;
+            const offset = circumference * (1 - fraction);
+            this.timerRing.style.strokeDashoffset = offset.toFixed(1);
+            this.timerRing.className = `timer-ring-progress phase-${step ? step.phase.toLowerCase() : 'done'}-stroke`;
+        }
     }
 
     playBeep() {
+        if (!appSettings.soundBeeps) return;
         try {
             alarmAudio.currentTime = 0;
             alarmAudio.play().catch(e => console.log('Audio play failed:', e));
@@ -731,7 +1448,8 @@ class WorkoutEngine {
         if (step.phase === 'DONE') return;
 
         this.isRunning = true;
-        this.playPauseBtn.textContent = 'Pause';
+        this.playPauseBtn.innerHTML = '&#10074;&#10074;';
+        this.playPauseBtn.title = 'Pause (Spacebar)';
 
         this.timerId = setInterval(() => {
             this.timeLeft--;
@@ -739,10 +1457,13 @@ class WorkoutEngine {
 
             if (this.timeLeft === 3) {
                 this.speak('3');
+                triggerHaptic([80]);
             } else if (this.timeLeft === 2) {
                 this.speak('2');
+                triggerHaptic([80]);
             } else if (this.timeLeft === 1) {
                 this.speak('1');
+                triggerHaptic([80]);
             }
 
             if (this.timeLeft <= 0) {
@@ -756,7 +1477,8 @@ class WorkoutEngine {
         if (!this.isRunning) return;
         this.isRunning = false;
         clearInterval(this.timerId);
-        this.playPauseBtn.textContent = 'Play';
+        this.playPauseBtn.innerHTML = '&#9658;';
+        this.playPauseBtn.title = 'Play (Spacebar)';
     }
 
     togglePlayPause() {
@@ -770,7 +1492,7 @@ class WorkoutEngine {
             this.currentIndex++;
             this.loadCurrentStep();
             if (this.sequence[this.currentIndex].phase !== 'DONE') {
-                this.start(); // Auto-continue
+                this.start();
             }
         }
     }
@@ -783,6 +1505,23 @@ class WorkoutEngine {
         }
     }
 
+    skipExercise() {
+        const currentStep = this.sequence[this.currentIndex];
+        if (!currentStep || currentStep.phase === 'DONE') return;
+
+        const currentExId = currentStep.exercise?.id;
+        let nextExIndex = this.sequence.findIndex((st, idx) => idx > this.currentIndex && (st.exercise?.id !== currentExId || st.phase === 'DONE'));
+
+        if (nextExIndex !== -1) {
+            this.pause();
+            this.currentIndex = nextExIndex;
+            this.loadCurrentStep();
+            if (this.sequence[this.currentIndex].phase !== 'DONE') {
+                this.start();
+            }
+        }
+    }
+
     stop() {
         this.pause();
         releaseWakeLock();
@@ -791,8 +1530,8 @@ class WorkoutEngine {
 
 document.getElementById('startPlanBtn').addEventListener('click', () => {
     const plan = plans.find(p => p.id === currentPlanId);
-    if (!plan || plan.exercises.length === 0) {
-        alert("Add some exercises first!");
+    if (!plan || !plan.exercises || plan.exercises.length === 0) {
+        showToast("Please add at least one exercise first!");
         return;
     }
 
@@ -817,6 +1556,68 @@ document.getElementById('nextPhaseBtn').addEventListener('click', () => {
 
 document.getElementById('prevPhaseBtn').addEventListener('click', () => {
     if (workoutEngine) workoutEngine.prevStep();
+});
+
+document.getElementById('skipExerciseBtn').addEventListener('click', () => {
+    if (workoutEngine) workoutEngine.skipExercise();
+});
+
+// Fullscreen Toggle
+document.getElementById('workoutFullscreenBtn').addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+    } else {
+        document.exitFullscreen().catch(err => console.log('Exit fullscreen error:', err));
+    }
+});
+
+// --- Modal Dismissal on Backdrop Click ---
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+            if (modal.id === 'mediaLightboxModal') {
+                closeLightbox();
+            }
+        }
+    });
+});
+
+// --- Global Keyboard Shortcuts ---
+document.addEventListener('keydown', (e) => {
+    const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+    const lightboxModal = document.getElementById('mediaLightboxModal');
+    const isLightboxOpen = lightboxModal && !lightboxModal.classList.contains('hidden');
+
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+        closeLightbox();
+        return;
+    }
+
+    if (isLightboxOpen) {
+        if (e.key === 'ArrowRight') {
+            lightboxNext();
+        } else if (e.key === 'ArrowLeft') {
+            lightboxPrev();
+        }
+        return;
+    }
+
+    if (isInput) return;
+
+    const workoutView = document.getElementById('workoutView');
+    const isWorkoutOpen = workoutView && !workoutView.classList.contains('hidden');
+    if (isWorkoutOpen && workoutEngine) {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            workoutEngine.togglePlayPause();
+        } else if (e.key === 'ArrowRight') {
+            workoutEngine.nextStep();
+        } else if (e.key === 'ArrowLeft') {
+            workoutEngine.prevStep();
+        }
+    }
 });
 
 // Initial Load

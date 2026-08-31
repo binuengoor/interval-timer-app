@@ -1,46 +1,67 @@
 # Interval Timer App
 
-A comprehensive, modern interval timer application tailored for physical therapy and workouts. This application allows you to create detailed workout plans consisting of multiple exercises with configurable work and rest intervals.
+A comprehensive, modern interval timer application tailored for physical therapy, mobility routines, and workouts. This application allows you to create detailed workout plans consisting of multiple exercises with configurable work and rest intervals.
 
 ![Workout Screen](assets/screenshot.png)
 
 ## Features
 
-- **Modern Mobile-First UI**: Dark-themed, responsive design that looks great on mobile and desktop.
-- **Custom Workout Plans**: Create and manage multiple physical therapy/workout plans.
-- **Detailed Exercises**: Configure name, description, sets, reps, work time, and rest time for each exercise.
-- **Media Integration**:
-  - Automatically fetch default thumbnails for YouTube links.
-  - View rotating images or YouTube videos in the media container during workouts.
-  - Automatically pause other media.
-  - **Image Caching System**: Backend proxy caches external and S3 presigned images (supporting `octet-stream` MIME types) for offline availability and performance.
-- **Text-To-Speech (TTS) Prompts**: Uses the Web Speech API to provide audio cues (e.g., "3-2-1 Go", "Rest", and exercise announcements), with integration for a custom backend TTS proxy endpoint.
-- **Backend YAML Storage**: Plan data is persisted into a local YAML file (`data/plans.yml`) instead of just local storage.
-  - Includes an **In-App YAML Editor** accessible from the dashboard to view and directly edit raw plan configurations.
-- **Workout Stats Tracking System**: Tracks and stores workout completion stats locally in `data/stats.yml`, accessible through a frontend modal.
-- **Progressive Web App (PWA) & Wake Lock**: Installable as a PWA and utilizes the Screen Wake Lock API to prevent the screen from turning off during a workout.
+- **Modern Dark-Themed UI**: Mobile-first responsive design with toast notifications and fluid animations.
+- **Custom Workout Plans & Exercises**:
+  - Configure name, notes, sets, reps, work time, rest time between reps, and rest time between sets.
+  - **Two-Sided / Unilateral Exercise Support**: Automatically alternates between **Left Side** and **Right Side** with switch cues.
+  - **Exercise Reordering & Duplication**: Move exercises up/down and clone exercises with one click.
+- **Media & Preview System**:
+  - **Clickable Media Lightbox**: Click any exercise thumbnail in the plan editor or workout screen to view full-resolution diagrams, image carousels with multi-image navigation, or YouTube video embeds.
+  - Uncropped image containment (`object-fit: contain`) so posture diagrams are never cut off.
+  - Automatically fetches default thumbnails for YouTube links.
+- **Timer & Workout Engine**:
+  - **Animated Circular SVG Countdown Ring**: Real-time smooth circular timer with phase color cues (Amber for Prepare, Green for Work, Red for Rest).
+  - **Overall Progress Tracking**: Top progress bar and `Exercise X of Y` indicator showing total workout progress.
+  - **Skip Exercise**: Instantly jump to the next exercise during a workout.
+  - **Fullscreen Mode**: 1-tap dedicated distraction-free timer display on mobile and desktop.
+- **Audio, Voice & Haptics**:
+  - **Text-To-Speech (TTS) Prompts**: Customizable audio announcements (*"3-2-1 Go"*, *"Rest"*, *"Left side first"*, *"Switch sides"*).
+  - **Configurable Settings**: Customize voice prompt level (Full, Minimal, Muted), speech speed ($0.8\times - 1.4\times$), audio beeps, and mobile haptic vibration.
+- **Analytics & Motivation**:
+  - **Activity Heatmap**: 30-day visual contribution grid tracking daily workout frequency.
+  - **Streak & Stats Tracking**: Tracks total completions, current day streaks, and history stored in `data/stats.yml`.
+- **Data Management & Sharing**:
+  - **Preset Routine Library**: One-click import for curated templates (*Shoulder & Neck PT*, *Core & Planks*, *Desk Ergonomics*, *7-Min HIIT*).
+  - **File Export & Import**: Download and upload plans as `.yml` or `.json` files for easy backup and cross-device sync.
+  - **In-App YAML Editor**: Direct raw YAML editing on the dashboard.
+- **PWA & Offline Support**:
+  - Installable as a Progressive Web App (PWA).
+  - Uses the **Screen Wake Lock API** to keep your display awake during workouts.
+  - Runtime media caching for offline availability of exercise images.
+
+## Keyboard Shortcuts (Workout View)
+
+| Key | Action |
+| --- | --- |
+| <kbd>Space</kbd> | Toggle Play / Pause |
+| <kbd>&rarr;</kbd> | Next Phase / Step |
+| <kbd>&larr;</kbd> | Previous Phase / Step |
+| <kbd>Esc</kbd> | Close active modal / Lightbox |
 
 ## How to Run with Docker Compose
 
-To run the application easily via Docker without needing to install Node.js locally:
+To run the application easily via Docker:
 
 1. Clone the repository.
-2. Ensure you have Docker and Docker Compose installed.
-3. Start the application:
+2. Start the application:
    ```bash
    docker-compose up -d
    ```
-4. Access the app in your browser at `http://localhost:8080`.
+3. Access the app in your browser at `http://localhost:8080`.
 
 ### Data Volume Mounting
 
-By default, the `docker-compose.yml` mounts a local `./data` directory into the container at `/app/data`. This allows you to:
-- Retain your saved workouts even if the container is destroyed.
-- Manually edit or backup the `plans.yml` file from your local machine.
+By default, `docker-compose.yml` mounts a local `./data` directory into the container at `/app/data`. This allows you to:
+- Retain saved workouts and stats across container restarts.
+- Directly edit or backup `plans.yml` and `stats.yml` on your host machine.
 
 ## Local Development (Node.js)
-
-If you prefer to run the app via Node.js:
 
 1. Install dependencies:
    ```bash
@@ -50,4 +71,4 @@ If you prefer to run the app via Node.js:
    ```bash
    npm start
    ```
-3. Open `http://localhost:80` (or whichever port is assigned via the `PORT` env var).
+3. Open `http://localhost:8080` (or the port specified in `PORT`).

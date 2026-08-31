@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Interval Timer App for Workouts and Physical Therapy">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#0f172a">
     <title>Interval Timer App</title>
-    <!-- Use a modern Google Font instead of water.css -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,12 +19,37 @@
         <!-- Dashboard View -->
         <main id="dashboardView" class="view">
             <header class="app-header">
-                <h1>My Plans</h1>
-                <div>
+                <div class="header-brand">
+                    <h1>My Plans</h1>
+                    <span id="headerStreakBadge" class="streak-badge" title="Current Daily Streak">🔥 0 Day Streak</span>
+                </div>
+                <div class="header-actions">
+                    <button id="openSettingsBtn" class="btn btn-secondary btn-icon-text" title="App Settings">⚙️</button>
+                    <button id="openTemplatesBtn" class="btn btn-secondary btn-icon-text" title="Browse Preset Routines">📚 Presets</button>
+                    <button id="exportPlansBtn" class="btn btn-secondary btn-icon-text" title="Export Plans to YAML">📥 Export</button>
+                    <button id="importPlansBtn" class="btn btn-secondary btn-icon-text" title="Import Plans from YAML/JSON">📤 Import</button>
+                    <input type="file" id="importFileInput" accept=".yml,.yaml,.json" class="hidden">
                     <button id="editYamlBtn" class="btn btn-secondary">Edit YAML</button>
                     <button id="createNewPlanBtn" class="btn btn-primary">+ New Plan</button>
                 </div>
             </header>
+
+            <!-- Dashboard Stats Summary Banner -->
+            <div id="dashboardStatsBanner" class="stats-summary-banner card">
+                <div class="stat-summary-item">
+                    <span class="stat-summary-val" id="bannerTotalWorkouts">0</span>
+                    <span class="stat-summary-label">Total Workouts</span>
+                </div>
+                <div class="stat-summary-item">
+                    <span class="stat-summary-val" id="bannerCurrentStreak">0🔥</span>
+                    <span class="stat-summary-label">Day Streak</span>
+                </div>
+                <div class="stat-summary-item">
+                    <span class="stat-summary-val" id="bannerTotalPlans">0</span>
+                    <span class="stat-summary-label">Custom Plans</span>
+                </div>
+            </div>
+
             <div id="planList" class="plan-list">
                 <!-- Plan items will be injected here -->
             </div>
@@ -101,6 +125,14 @@
                     </div>
                 </div>
 
+                <!-- Unilateral / Both Sides Option -->
+                <div class="input-group checkbox-container">
+                    <label class="checkbox-label" for="exerciseBothSides">
+                        <input type="checkbox" id="exerciseBothSides">
+                        <span><strong>Two-Sided / Unilateral Exercise</strong> (Alternates Left &amp; Right sides)</span>
+                    </label>
+                </div>
+
                 <div class="input-group">
                     <label for="exerciseImages">Image URLs (comma separated)</label>
                     <input type="text" id="exerciseImages" placeholder="https://..., https://...">
@@ -113,6 +145,78 @@
                 <div class="modal-actions">
                     <button id="cancelExerciseBtn" class="btn btn-secondary">Cancel</button>
                     <button id="saveExerciseBtn" class="btn btn-primary">Save Exercise</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Media Lightbox Modal -->
+        <div id="mediaLightboxModal" class="modal hidden">
+            <div class="lightbox-container">
+                <button id="closeLightboxBtn" class="btn btn-icon lightbox-close-btn" aria-label="Close">&times;</button>
+                <h3 id="lightboxTitle" class="lightbox-title">Exercise Media</h3>
+                <div id="lightboxMediaContent" class="lightbox-media-wrapper">
+                    <!-- Lightbox image or video injected dynamically -->
+                </div>
+                <div id="lightboxNav" class="lightbox-nav hidden">
+                    <button id="lightboxPrevBtn" class="btn btn-icon lightbox-arrow">&larr;</button>
+                    <span id="lightboxCounter" class="lightbox-counter">1 / 1</span>
+                    <button id="lightboxNextBtn" class="btn btn-icon lightbox-arrow">&rarr;</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal hidden">
+            <div class="modal-content card">
+                <div class="modal-header-row">
+                    <h2>⚙️ App Settings</h2>
+                    <button id="closeSettingsBtn" class="btn btn-icon" style="font-size: 1.5rem;">&times;</button>
+                </div>
+
+                <div class="input-group mt-2">
+                    <label for="settingVoicePrompts">Voice Announcements</label>
+                    <select id="settingVoicePrompts" class="form-select">
+                        <option value="full">Full (Exercise info, counts, cues)</option>
+                        <option value="minimal">Minimal (Cues only: Go, Rest, Count)</option>
+                        <option value="off">Off (Muted)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="settingVoiceSpeed">Voice Speed (<span id="voiceSpeedVal">1.1</span>x)</label>
+                    <input type="range" id="settingVoiceSpeed" min="0.8" max="1.4" step="0.05" value="1.1">
+                </div>
+
+                <div class="input-group checkbox-container">
+                    <label class="checkbox-label" for="settingSoundBeeps">
+                        <input type="checkbox" id="settingSoundBeeps" checked>
+                        <span>Play Audio Beep / Alarm on Phase Transition</span>
+                    </label>
+                </div>
+
+                <div class="input-group checkbox-container">
+                    <label class="checkbox-label" for="settingHaptics">
+                        <input type="checkbox" id="settingHaptics" checked>
+                        <span>Haptic Vibration on Mobile (Cues &amp; Transitions)</span>
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workout Preset Templates Modal -->
+        <div id="templatesModal" class="modal hidden">
+            <div class="modal-content card" style="max-width: 600px;">
+                <div class="modal-header-row">
+                    <h2>📚 Workout Routine Presets</h2>
+                    <button id="closeTemplatesBtn" class="btn btn-icon" style="font-size: 1.5rem;">&times;</button>
+                </div>
+                <p class="text-muted" style="margin-bottom: 1rem;">Choose a pre-configured routine to add to your plans.</p>
+                <div id="templatesList" class="templates-list">
+                    <!-- Template cards injected here -->
                 </div>
             </div>
         </div>
@@ -133,16 +237,30 @@
 
         <!-- Stats Modal -->
         <div id="statsModal" class="modal hidden">
-            <div class="modal-content card">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h2>Workout Stats</h2>
+            <div class="modal-content card" style="max-width: 600px;">
+                <div class="modal-header-row">
+                    <h2>Workout Stats &amp; Activity</h2>
                     <button id="closeStatsBtn" class="btn btn-icon" style="font-size: 1.5rem;">&times;</button>
                 </div>
-                <div id="statsContent" style="margin-top: 1rem; max-height: 300px; overflow-y: auto;">
-                    <!-- Stats will be injected here -->
+
+                <!-- 30-Day Activity Heatmap Grid -->
+                <div class="heatmap-section card mt-2">
+                    <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem;">Last 30 Days Activity</h3>
+                    <div id="statsHeatmap" class="activity-heatmap"></div>
+                    <div class="heatmap-legend">
+                        <span>Less</span>
+                        <div class="legend-dot" style="background: #1e293b;"></div>
+                        <div class="legend-dot" style="background: #065f46;"></div>
+                        <div class="legend-dot" style="background: #10b981;"></div>
+                        <span>More</span>
+                    </div>
+                </div>
+
+                <div id="statsContent" style="margin-top: 1rem; max-height: 250px; overflow-y: auto;">
+                    <!-- Stats list will be injected here -->
                 </div>
                 <div class="modal-actions mt-2" style="justify-content: space-between;">
-                    <button id="resetStatsBtn" class="btn btn-danger">Reset Stats</button>
+                    <button id="resetStatsBtn" class="btn btn-danger">Reset Plan Stats</button>
                     <button id="closeStatsModalBtn" class="btn btn-secondary">Close</button>
                 </div>
             </div>
@@ -150,17 +268,31 @@
 
         <!-- Workout View -->
         <main id="workoutView" class="view hidden">
+            <!-- Overall Progress Bar -->
+            <div class="progress-bar-container">
+                <div id="workoutProgressBar" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+
             <header class="workout-header-bar">
-                <button id="exitWorkoutBtn" class="btn btn-icon">&larr; Exit</button>
-                <h2 id="workoutPlanName">Plan Name</h2>
-                <div style="width: 40px;"></div> <!-- spacer -->
+                <button id="exitWorkoutBtn" class="btn btn-icon" title="Exit to Plan">&larr; Exit</button>
+                <div class="workout-header-info">
+                    <h2 id="workoutPlanName">Plan Name</h2>
+                    <span id="workoutExerciseCounter" class="workout-sub-counter">Exercise 1 of 1</span>
+                </div>
+                <div class="workout-header-right">
+                    <button id="workoutFullscreenBtn" class="btn btn-icon" title="Toggle Fullscreen">⛶</button>
+                    <button id="skipExerciseBtn" class="btn btn-sm btn-secondary" title="Skip to Next Exercise">Skip Ex &rarr;</button>
+                </div>
             </header>
 
             <div class="workout-content">
                 <div class="workout-info-card card">
                     <h3 id="workoutExerciseName" class="text-xl">Exercise Name</h3>
                     <p id="workoutExerciseNotes" class="notes"></p>
-                    <div id="workoutProgress" class="badge">Set 1 of 3</div>
+                    <div class="badge-group">
+                        <div id="workoutProgress" class="badge">Set 1 of 3</div>
+                        <div id="workoutSideBadge" class="badge badge-side hidden">LEFT SIDE</div>
+                    </div>
                 </div>
 
                 <!-- Media Section -->
@@ -169,27 +301,39 @@
                         <button id="showImageBtn" class="active">Images</button>
                         <button id="showVideoBtn">Video</button>
                     </div>
-                    <div id="imageCycleContainer" class="media-content">
+                    <div id="imageCycleContainer" class="media-content" title="Click to enlarge">
                         <img id="workoutImage" src="" alt="Exercise media">
+                        <div id="imagePaginationDots" class="image-pagination-dots hidden"></div>
+                        <div class="media-zoom-hint">🔍 Expand</div>
                     </div>
                     <div id="youtubeContainer" class="media-content hidden">
                         <div id="youtubePlayer"></div>
                     </div>
                 </div>
 
+                <!-- Circular SVG Timer Section -->
                 <div class="timer-section">
                     <div id="phaseDisplay" class="phase-label">PREPARE</div>
-                    <div id="timerDisplay" class="display phase-prepare">00:00</div>
+                    <div class="timer-ring-container">
+                        <svg class="timer-ring-svg" viewBox="0 0 220 220">
+                            <circle class="timer-ring-bg" cx="110" cy="110" r="95"></circle>
+                            <circle id="timerRingProgress" class="timer-ring-progress phase-prepare-stroke" cx="110" cy="110" r="95"></circle>
+                        </svg>
+                        <div id="timerDisplay" class="display phase-prepare">00:00</div>
+                    </div>
                 </div>
 
                 <div class="controls workout-controls">
-                    <button id="prevPhaseBtn" class="btn btn-control" aria-label="Previous">|&lt;</button>
-                    <button id="playPauseBtn" class="btn btn-control btn-play" aria-label="Play/Pause">Play</button>
-                    <button id="nextPhaseBtn" class="btn btn-control" aria-label="Next">&gt;|</button>
+                    <button id="prevPhaseBtn" class="btn btn-control" title="Previous Phase (Left Arrow)" aria-label="Previous Phase">&#9198;</button>
+                    <button id="playPauseBtn" class="btn btn-control btn-play" title="Play / Pause (Spacebar)" aria-label="Play/Pause">&#9658;</button>
+                    <button id="nextPhaseBtn" class="btn btn-control" title="Next Phase (Right Arrow)" aria-label="Next Phase">&#9197;</button>
                 </div>
             </div>
         </main>
     </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast" class="toast hidden"></div>
 
     <audio id="alarm" src="assets/alarm.mp3" preload="auto"></audio>
     <script src="script.js" defer></script>
