@@ -1801,7 +1801,7 @@ class WorkoutEngine {
             const fraction = (step && step.duration > 0) ? (this.timeLeft / step.duration) : 0;
             const offset = circumference * (1 - fraction);
             this.timerRing.style.strokeDashoffset = offset.toFixed(1);
-            this.timerRing.className = `timer-ring-progress phase-${step ? step.phase.toLowerCase() : 'done'}-stroke`;
+            this.timerRing.setAttribute('class', `timer-ring-progress phase-${step ? step.phase.toLowerCase() : 'done'}-stroke`);
         }
 
         // Update Picture-in-Picture Canvas Stream
