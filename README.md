@@ -30,6 +30,13 @@ A comprehensive, modern interval timer application tailored for physical therapy
   - **Preset Routine Library**: One-click import for curated templates (*Shoulder & Neck PT*, *Core & Planks*, *Desk Ergonomics*, *7-Min HIIT*).
   - **File Export & Import**: Download and upload plans as `.yml` or `.json` files for easy backup and cross-device sync.
   - **In-App YAML Editor**: Direct raw YAML editing on the dashboard.
+- **Pain Level & PT Notes Tracker**:
+  - Automatically logs post-workout pain levels on a 0–10 scale with emoji indicators and optional notes.
+  - Interactive **Pain Trend Sparkline Chart** in the Stats modal to track recovery over time.
+- **Hands-Free Voice Recognition Commands**:
+  - Use voice commands (*"Pause"*, *"Resume"*, *"Next"*, *"Back"*, *"Skip"*) with live listening HUD for floor or mat exercises.
+- **Picture-in-Picture (PiP) Floating Timer**:
+  - Float a live countdown window over your desktop/phone while browsing other apps or watching videos.
 - **PWA & Offline Support**:
   - Installable as a Progressive Web App (PWA).
   - Uses the **Screen Wake Lock API** to keep your display awake during workouts.
