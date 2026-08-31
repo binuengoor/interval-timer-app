@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   interval-timer-app:
+    build: .
     image: ghcr.io/binuengoor/interval-timer-app:latest
     container_name: interval-timer-app
     ports:
