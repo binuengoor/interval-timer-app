@@ -134,7 +134,7 @@ app.get('/api/stats', (req, res) => {
 
 app.post('/api/stats', (req, res) => {
     try {
-        const { planId, timestamp } = req.body;
+        const { planId, timestamp, painLevel, notes } = req.body;
         if (!planId || !timestamp) {
             return res.status(400).json({ error: "Missing planId or timestamp" });
         }
@@ -144,7 +144,16 @@ app.post('/api/stats', (req, res) => {
         if (!data[planId]) {
             data[planId] = [];
         }
-        data[planId].push(timestamp);
+
+        if (painLevel !== undefined || (notes && notes.trim().length > 0)) {
+            data[planId].push({
+                timestamp,
+                painLevel: painLevel !== undefined && painLevel !== null ? Number(painLevel) : null,
+                notes: notes ? String(notes).trim() : ''
+            });
+        } else {
+            data[planId].push(timestamp);
+        }
 
         fs.writeFileSync(statsFile, yaml.dump(data), 'utf8');
         res.json({ success: true });

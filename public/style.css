@@ -916,4 +916,169 @@ input[type="range"] {
     transform: scale(1.08);
 }
 
+/* Glassmorphism & Glowing Ring Effects */
+.card {
+    background: rgba(30, 41, 59, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.phase-work-stroke {
+    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.5));
+}
+.phase-prepare-stroke {
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.5));
+}
+.phase-rest-stroke {
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
+}
+
+/* Voice Control HUD Pill */
+.voice-hud-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    color: #93c5fd;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 0.775rem;
+    margin: 0.25rem auto 0.5rem;
+    width: fit-content;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.voice-hud-pill em {
+    color: #ffffff;
+    font-style: normal;
+    font-weight: 600;
+}
+
+.voice-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    animation: voicePulse 1.2s infinite ease-in-out;
+}
+
+@keyframes voicePulse {
+    0% { transform: scale(0.9); opacity: 0.7; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { transform: scale(0.9); opacity: 0.7; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Pain Level & Notes Tracking Modal */
+.pain-tracker-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+}
+
+.pain-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.pain-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.pain-lvl-0 { background: #065f46; color: #a7f3d0; border: 1px solid #10b981; }
+.pain-lvl-1, .pain-lvl-2, .pain-lvl-3 { background: #713f12; color: #fef08a; border: 1px solid #eab308; }
+.pain-lvl-4, .pain-lvl-5, .pain-lvl-6 { background: #7c2d12; color: #fed7aa; border: 1px solid #f97316; }
+.pain-lvl-7, .pain-lvl-8, .pain-lvl-9 { background: #7f1d1d; color: #fecaca; border: 1px solid #ef4444; }
+.pain-lvl-10 { background: #881337; color: #fecdd3; border: 1px solid #f43f5e; animation: pulse 1s infinite; }
+
+.pain-slider {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right, #10b981 0%, #eab308 35%, #f97316 65%, #ef4444 100%);
+    outline: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.pain-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #3b82f6;
+    box-shadow: 0 0 6px rgba(0,0,0,0.5);
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.pain-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.pain-scale-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.725rem;
+    color: var(--text-muted);
+    margin-top: 0.35rem;
+}
+
+/* Stats Modal Pain Trend Visualization */
+.stats-pain-section {
+    padding: 0.85rem;
+}
+
+.pain-trend-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 75px;
+    padding-top: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pain-bar-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+}
+
+.pain-bar {
+    width: 100%;
+    max-width: 16px;
+    border-radius: 3px 3px 0 0;
+    transition: height 0.3s ease;
+}
+
+.stats-item-notes {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 0.25rem;
+}
+
+.pain-tag {
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+    font-weight: 600;
+}
+
+
 

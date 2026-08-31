@@ -389,9 +389,12 @@ function showView(viewName) {
 // --- Activity Heatmap & Streak Calculation ---
 function calculateStreakAndStats(statsMap) {
     const allTimestamps = [];
-    Object.values(statsMap).forEach(tsList => {
-        if (Array.isArray(tsList)) {
-            allTimestamps.push(...tsList);
+    Object.values(statsMap).forEach(records => {
+        if (Array.isArray(records)) {
+            records.forEach(r => {
+                const ts = (typeof r === 'object' && r.timestamp) ? r.timestamp : r;
+                if (ts) allTimestamps.push(ts);
+            });
         }
     });
 
@@ -504,7 +507,9 @@ async function renderDashboard() {
         const timesCompleted = planStats.length;
         let lastCompleteStr = 'Never';
         if (timesCompleted > 0) {
-            const lastDate = new Date(planStats[planStats.length - 1]);
+            const lastItem = planStats[planStats.length - 1];
+            const lastTs = (typeof lastItem === 'object' && lastItem.timestamp) ? lastItem.timestamp : lastItem;
+            const lastDate = new Date(lastTs);
             lastCompleteStr = lastDate.toLocaleDateString() + ' ' + lastDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
 
@@ -705,6 +710,92 @@ document.getElementById('saveYamlBtn').addEventListener('click', () => {
     }
 });
 
+// --- Pain Level Scale Reference ---
+const PAIN_LABELS = {
+    0: "0 - None 😊",
+    1: "1 - Minimal 😌",
+    2: "2 - Very Mild 🙂",
+    3: "3 - Mild Ache 😐",
+    4: "4 - Noticeable 😕",
+    5: "5 - Moderate 😣",
+    6: "6 - Uncomfortable 😖",
+    7: "7 - Painful 😫",
+    8: "8 - Intense 😩",
+    9: "9 - Severe 😭",
+    10: "10 - Extreme 🚨"
+};
+
+const painSlider = document.getElementById('painScoreSlider');
+const painDisplay = document.getElementById('painScoreDisplay');
+if (painSlider && painDisplay) {
+    painSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        painDisplay.textContent = PAIN_LABELS[val] || `${val}`;
+        painDisplay.className = `pain-badge pain-lvl-${val}`;
+    });
+}
+
+let pendingWorkoutStats = null;
+
+function showWorkoutCompleteModal(planId) {
+    pendingWorkoutStats = {
+        planId: planId,
+        timestamp: new Date().toISOString()
+    };
+
+    if (painSlider) {
+        painSlider.value = 0;
+        painDisplay.textContent = PAIN_LABELS[0];
+        painDisplay.className = 'pain-badge pain-lvl-0';
+    }
+    const notesInput = document.getElementById('workoutPainNotes');
+    if (notesInput) notesInput.value = '';
+
+    document.getElementById('workoutCompleteModal').classList.remove('hidden');
+}
+
+document.getElementById('savePainLogBtn').addEventListener('click', async () => {
+    if (!pendingWorkoutStats) return;
+    const painVal = painSlider ? parseInt(painSlider.value) : 0;
+    const notesVal = document.getElementById('workoutPainNotes')?.value || '';
+
+    try {
+        await fetch('/api/stats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                planId: pendingWorkoutStats.planId,
+                timestamp: pendingWorkoutStats.timestamp,
+                painLevel: painVal,
+                notes: notesVal
+            })
+        });
+        showToast("Workout log saved!");
+    } catch (e) {
+        console.error("Failed to save pain log", e);
+    }
+
+    document.getElementById('workoutCompleteModal').classList.add('hidden');
+    pendingWorkoutStats = null;
+});
+
+document.getElementById('skipPainLogBtn').addEventListener('click', async () => {
+    if (!pendingWorkoutStats) return;
+    try {
+        await fetch('/api/stats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                planId: pendingWorkoutStats.planId,
+                timestamp: pendingWorkoutStats.timestamp
+            })
+        });
+    } catch (e) {}
+
+    document.getElementById('workoutCompleteModal').classList.add('hidden');
+    pendingWorkoutStats = null;
+});
+
 let currentStatsPlanId = null;
 
 window.showStats = async function(planId, event) {
@@ -728,12 +819,53 @@ window.showStats = async function(planId, event) {
         if (planStats.length === 0) {
             content.innerHTML = '<p class="text-muted text-center py-2">No completed workouts recorded for this plan yet.</p>';
         } else {
-            content.innerHTML = '<ul class="stats-list" style="list-style-type: none; padding: 0;">' +
-                planStats.slice().reverse().map(ts => {
+            // Build pain sparkline chart if pain data exists
+            const painRecords = planStats.filter(r => typeof r === 'object' && r.painLevel !== undefined && r.painLevel !== null);
+            let chartHtml = '';
+            if (painRecords.length > 0) {
+                const recentPain = painRecords.slice(-10);
+                chartHtml = `
+                    <div class="stats-pain-section card mt-2 mb-2">
+                        <h4 style="font-size: 0.85rem; margin-bottom: 0.35rem;">🩹 Pain &amp; Discomfort Trend (Last ${recentPain.length} sessions)</h4>
+                        <div class="pain-trend-chart">
+                            ${recentPain.map(r => {
+                                const p = r.painLevel;
+                                const heightPct = Math.max(12, Math.round((p / 10) * 100));
+                                let color = '#10b981';
+                                if (p >= 7) color = '#ef4444';
+                                else if (p >= 4) color = '#f97316';
+                                else if (p >= 1) color = '#eab308';
+                                return `<div class="pain-bar-wrapper" title="Pain: ${p}/10 (${new Date(r.timestamp).toLocaleDateString()})">
+                                    <div class="pain-bar" style="height: ${heightPct}%; background: ${color};"></div>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">${p}</span>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = chartHtml + '<ul class="stats-list" style="list-style-type: none; padding: 0;">' +
+                planStats.slice().reverse().map(item => {
+                    const ts = (typeof item === 'object' && item.timestamp) ? item.timestamp : item;
                     const d = new Date(ts);
-                    return `<li style="padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                        <span>${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                        <span style="color: var(--text-muted); font-size: 0.875rem;">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    const painVal = (typeof item === 'object' && item.painLevel !== undefined && item.painLevel !== null) ? item.painLevel : null;
+                    const notes = (typeof item === 'object' && item.notes) ? item.notes : '';
+
+                    let painBadge = '';
+                    if (painVal !== null) {
+                        painBadge = `<span class="pain-tag pain-lvl-${painVal}">Pain: ${painVal}/10</span>`;
+                    }
+
+                    return `<li style="padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span>${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                ${painBadge}
+                            </div>
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        ${notes ? `<div class="stats-item-notes">"${notes}"</div>` : ''}
                     </li>`;
                 }).join('') + '</ul>';
         }
@@ -743,7 +875,7 @@ window.showStats = async function(planId, event) {
         console.error("Failed to load stats", e);
         showToast("Failed to load stats");
     }
-}
+};
 
 document.getElementById('closeStatsBtn').addEventListener('click', () => {
     document.getElementById('statsModal').classList.add('hidden');
@@ -774,7 +906,7 @@ window.deletePlan = function(id, e) {
         renderDashboard();
         showToast("Plan deleted");
     }
-}
+};
 
 function editPlan(id) {
     currentPlanId = id;
@@ -1125,6 +1257,187 @@ document.getElementById('showImageBtn').addEventListener('click', showImages);
 document.getElementById('showVideoBtn').addEventListener('click', showVideo);
 
 
+// --- Picture-in-Picture (PiP) Floating Timer Generator ---
+const pipCanvas = document.getElementById('pipCanvas');
+const pipVideo = document.getElementById('pipVideo');
+let isPipActive = false;
+
+function drawPipCanvas(step, timeLeft) {
+    if (!pipCanvas) return;
+    const ctx = pipCanvas.getContext('2d');
+    const width = pipCanvas.width;
+    const height = pipCanvas.height;
+
+    // Background
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, width, height);
+
+    if (!step) return;
+
+    // Phase Colors
+    let phaseColor = '#3b82f6';
+    if (step.phase === 'WORK') phaseColor = '#10b981';
+    else if (step.phase === 'REST') phaseColor = '#ef4444';
+    else if (step.phase === 'PREPARE') phaseColor = '#f59e0b';
+
+    // Phase Pill Top
+    ctx.fillStyle = phaseColor;
+    ctx.font = 'bold 20px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(step.phase, width / 2, 38);
+
+    // Large Countdown Time
+    const m = Math.floor(timeLeft / 60);
+    const s = timeLeft % 60;
+    const timeStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 64px Inter, system-ui, sans-serif';
+    ctx.fillText(timeStr, width / 2, 115);
+
+    // Exercise & Progress Subtitle
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '500 18px Inter, system-ui, sans-serif';
+    const exName = step.exercise ? step.exercise.name : 'Done';
+    const subText = step.exercise ? `${exName} (${step.side ? step.side + ' • ' : ''}Set ${step.setNum}/${step.totalSets})` : 'Workout Complete!';
+    ctx.fillText(subText, width / 2, 160);
+
+    // Bottom progress bar
+    if (step.duration > 0) {
+        const pct = 1 - (timeLeft / step.duration);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.fillRect(40, 190, width - 80, 8);
+        ctx.fillStyle = phaseColor;
+        ctx.fillRect(40, 190, (width - 80) * pct, 8);
+    }
+}
+
+async function togglePictureInPicture() {
+    if (!pipCanvas || !pipVideo) {
+        showToast("Picture-in-Picture not supported on this device.");
+        return;
+    }
+
+    try {
+        if (document.pictureInPictureElement) {
+            await document.exitPictureInPicture();
+        } else {
+            if (workoutEngine) {
+                const step = workoutEngine.sequence[workoutEngine.currentIndex];
+                drawPipCanvas(step, workoutEngine.timeLeft);
+            }
+            if (!pipVideo.srcObject) {
+                pipVideo.srcObject = pipCanvas.captureStream(10);
+            }
+            await pipVideo.play();
+            await pipVideo.requestPictureInPicture();
+            showToast("Floating Timer active!");
+        }
+    } catch (e) {
+        console.error("Picture-in-Picture failed", e);
+        showToast("PiP failed: " + e.message);
+    }
+}
+
+document.getElementById('workoutPipBtn').addEventListener('click', togglePictureInPicture);
+
+
+// --- Hands-Free Voice Commands System ---
+let speechRecognizer = null;
+let isVoiceListening = false;
+
+function initVoiceRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        return null;
+    }
+
+    const recognizer = new SpeechRecognition();
+    recognizer.continuous = true;
+    recognizer.interimResults = false;
+    recognizer.lang = 'en-US';
+
+    recognizer.onresult = (event) => {
+        const lastResult = event.results[event.results.length - 1];
+        if (lastResult.isFinal) {
+            const transcript = lastResult[0].transcript.trim().toLowerCase();
+            handleVoiceCommand(transcript);
+        }
+    };
+
+    recognizer.onerror = (event) => {
+        console.log("Speech recognition error:", event.error);
+    };
+
+    recognizer.onend = () => {
+        if (isVoiceListening) {
+            try {
+                recognizer.start();
+            } catch (e) {}
+        }
+    };
+
+    return recognizer;
+}
+
+function handleVoiceCommand(command) {
+    if (!workoutEngine) return;
+
+    if (command.includes('pause') || command.includes('stop') || command.includes('wait') || command.includes('freeze')) {
+        workoutEngine.pause();
+        showToast("🎙️ Voice: Paused");
+    } else if (command.includes('resume') || command.includes('play') || command.includes('go') || command.includes('continue') || command.includes('start')) {
+        workoutEngine.start();
+        showToast("🎙️ Voice: Resumed");
+    } else if (command.includes('next') || command.includes('forward')) {
+        workoutEngine.nextStep();
+        showToast("🎙️ Voice: Next Step");
+    } else if (command.includes('previous') || command.includes('back') || command.includes('repeat')) {
+        workoutEngine.prevStep();
+        showToast("🎙️ Voice: Previous Step");
+    } else if (command.includes('skip') || command.includes('skip exercise')) {
+        workoutEngine.skipExercise();
+        showToast("🎙️ Voice: Skipped Exercise");
+    }
+}
+
+function toggleVoiceCommands() {
+    const voiceBtn = document.getElementById('workoutVoiceCmdBtn');
+    const voiceHud = document.getElementById('voiceHudPill');
+
+    if (!speechRecognizer) {
+        speechRecognizer = initVoiceRecognition();
+    }
+
+    if (!speechRecognizer) {
+        showToast("Speech recognition not supported in this browser.");
+        return;
+    }
+
+    if (isVoiceListening) {
+        isVoiceListening = false;
+        try { speechRecognizer.stop(); } catch (e) {}
+        voiceBtn.style.color = '';
+        voiceHud.classList.add('hidden');
+        showToast("Voice control stopped");
+    } else {
+        try {
+            isVoiceListening = true;
+            speechRecognizer.start();
+            voiceBtn.style.color = '#3b82f6';
+            voiceHud.classList.remove('hidden');
+            showToast("🎙️ Voice control active! (Say: Pause, Resume, Next, Skip)");
+        } catch (e) {
+            console.error("Speech recognition start failed", e);
+            isVoiceListening = false;
+            showToast("Microphone permission required for voice control.");
+        }
+    }
+}
+
+document.getElementById('workoutVoiceCmdBtn').addEventListener('click', toggleVoiceCommands);
+
+
 // --- Core Interval Timer Logic ---
 let workoutEngine = null;
 const alarmAudio = document.getElementById('alarm');
@@ -1298,18 +1611,6 @@ class WorkoutEngine {
         }
     }
 
-    saveStats() {
-        if (!this.plan || !this.plan.id) return;
-        fetch('/api/stats', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                planId: this.plan.id,
-                timestamp: new Date().toISOString()
-            })
-        }).catch(e => console.error("Failed to save stats", e));
-    }
-
     initDOM() {
         this.displayTimer = document.getElementById('timerDisplay');
         this.displayPhase = document.getElementById('phaseDisplay');
@@ -1373,7 +1674,9 @@ class WorkoutEngine {
             }
         } else if (step.phase === 'DONE') {
             this.speak('Workout complete! Great job!');
-            this.saveStats();
+            if (this.plan && this.plan.id) {
+                showWorkoutCompleteModal(this.plan.id);
+            }
         }
 
         // Update UI Elements
@@ -1432,6 +1735,9 @@ class WorkoutEngine {
             this.timerRing.style.strokeDashoffset = offset.toFixed(1);
             this.timerRing.className = `timer-ring-progress phase-${step ? step.phase.toLowerCase() : 'done'}-stroke`;
         }
+
+        // Update Picture-in-Picture Canvas Stream
+        drawPipCanvas(step, this.timeLeft);
     }
 
     playBeep() {
@@ -1622,3 +1928,4 @@ document.addEventListener('keydown', (e) => {
 
 // Initial Load
 loadState();
+

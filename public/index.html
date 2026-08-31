@@ -266,6 +266,38 @@
             </div>
         </div>
 
+        <!-- Workout Complete & Pain Level Modal -->
+        <div id="workoutCompleteModal" class="modal hidden">
+            <div class="modal-content card" style="max-width: 480px; text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 0.25rem;">🎉</div>
+                <h2>Workout Complete!</h2>
+                <p class="text-muted" style="font-size: 0.9rem;">Great job! How did your body feel today?</p>
+                
+                <div class="pain-tracker-card mt-2">
+                    <div class="pain-header-row">
+                        <label for="painScoreSlider"><strong>Pain / Discomfort:</strong></label>
+                        <span id="painScoreDisplay" class="pain-badge pain-lvl-0">0 - None 😊</span>
+                    </div>
+                    <input type="range" id="painScoreSlider" min="0" max="10" step="1" value="0" class="pain-slider mt-1">
+                    <div class="pain-scale-labels">
+                        <span>0 (None)</span>
+                        <span>5 (Moderate)</span>
+                        <span>10 (Severe)</span>
+                    </div>
+                </div>
+
+                <div class="input-group mt-2" style="text-align: left;">
+                    <label for="workoutPainNotes">Session Notes (Optional)</label>
+                    <textarea id="workoutPainNotes" rows="2" placeholder="e.g. Left shoulder felt looser, increased reps on plank..."></textarea>
+                </div>
+
+                <div class="modal-actions mt-2">
+                    <button id="skipPainLogBtn" class="btn btn-secondary">Skip</button>
+                    <button id="savePainLogBtn" class="btn btn-primary">Save Session Log</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Workout View -->
         <main id="workoutView" class="view hidden">
             <!-- Overall Progress Bar -->
@@ -280,10 +312,18 @@
                     <span id="workoutExerciseCounter" class="workout-sub-counter">Exercise 1 of 1</span>
                 </div>
                 <div class="workout-header-right">
+                    <button id="workoutVoiceCmdBtn" class="btn btn-icon" title="Toggle Hands-Free Voice Commands">🎙️</button>
+                    <button id="workoutPipBtn" class="btn btn-icon" title="Picture-in-Picture Floating Timer">📺</button>
                     <button id="workoutFullscreenBtn" class="btn btn-icon" title="Toggle Fullscreen">⛶</button>
                     <button id="skipExerciseBtn" class="btn btn-sm btn-secondary" title="Skip to Next Exercise">Skip Ex &rarr;</button>
                 </div>
             </header>
+
+            <!-- Voice Control HUD Pill -->
+            <div id="voiceHudPill" class="voice-hud-pill hidden">
+                <span class="voice-pulse-dot"></span>
+                <span id="voiceHudText">🎙️ Listening for: <em>"pause"</em>, <em>"resume"</em>, <em>"next"</em>, <em>"skip"</em>, <em>"back"</em></span>
+            </div>
 
             <div class="workout-content">
                 <div class="workout-info-card card">
@@ -331,6 +371,10 @@
             </div>
         </main>
     </div>
+
+    <!-- Hidden Canvas & Video for Picture-in-Picture streaming -->
+    <canvas id="pipCanvas" width="400" height="240" style="display: none;"></canvas>
+    <video id="pipVideo" autoplay muted playsinline style="display: none;"></video>
 
     <!-- Toast Notification Container -->
     <div id="toast" class="toast hidden"></div>
