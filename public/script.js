@@ -1808,6 +1808,9 @@ class WorkoutEngine {
         if (this.currentIndex > 0) {
             this.currentIndex--;
             this.loadCurrentStep();
+            if (this.sequence[this.currentIndex].phase !== 'DONE') {
+                this.start();
+            }
         }
     }
 
@@ -1843,6 +1846,7 @@ document.getElementById('startPlanBtn').addEventListener('click', () => {
 
     workoutEngine = new WorkoutEngine(plan);
     showView('workout');
+    workoutEngine.start();
 });
 
 document.getElementById('exitWorkoutBtn').addEventListener('click', () => {
