@@ -1,4 +1,4 @@
-const CACHE_NAME = 'interval-timer-cache-v2';
+const CACHE_NAME = 'interval-timer-cache-v3';
 const MEDIA_CACHE = 'interval-timer-media-v1';
 const urlsToCache = [
   '/',
@@ -49,22 +49,17 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Network first for other API calls, fallback to cache
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // Cache first for static assets
+  // Network first for all app assets and API calls, fallback to cache if offline
   event.respondWith(
-    caches.match(event.request).then(response => {
-      if (response) {
-        return response;
+    fetch(event.request).then(networkResponse => {
+      if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseClone);
+        });
       }
-      return fetch(event.request);
-    })
+      return networkResponse;
+    }).catch(() => caches.match(event.request))
   );
 });
 

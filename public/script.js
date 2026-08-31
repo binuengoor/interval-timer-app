@@ -34,16 +34,48 @@ function saveSettings() {
 
 function applySettingsToDOM() {
     const voiceSelect = document.getElementById('settingVoicePrompts');
+    const planVoiceSelect = document.getElementById('planVoicePrompts');
+    const workoutVoiceToggle = document.getElementById('workoutVoiceToggleBtn');
     const speedInput = document.getElementById('settingVoiceSpeed');
     const speedVal = document.getElementById('voiceSpeedVal');
     const beepsCheck = document.getElementById('settingSoundBeeps');
     const hapticsCheck = document.getElementById('settingHaptics');
 
     if (voiceSelect) voiceSelect.value = appSettings.voicePrompts;
+    if (planVoiceSelect) planVoiceSelect.value = appSettings.voicePrompts;
+    if (workoutVoiceToggle) {
+        if (appSettings.voicePrompts === 'full') {
+            workoutVoiceToggle.textContent = '🗣️';
+            workoutVoiceToggle.title = 'Voice: Full Narration (Click to switch to Minimal/Off)';
+        } else if (appSettings.voicePrompts === 'minimal') {
+            workoutVoiceToggle.textContent = '🔉';
+            workoutVoiceToggle.title = 'Voice: Minimal Cues (Click to Mute/Full)';
+        } else {
+            workoutVoiceToggle.textContent = '🔇';
+            workoutVoiceToggle.title = 'Voice: Muted / Off (Click to Unmute)';
+        }
+    }
     if (speedInput) speedInput.value = appSettings.voiceSpeed;
     if (speedVal) speedVal.textContent = Number(appSettings.voiceSpeed).toFixed(2);
     if (beepsCheck) beepsCheck.checked = appSettings.soundBeeps;
     if (hapticsCheck) hapticsCheck.checked = appSettings.haptics;
+}
+
+function cycleVoicePromptsSetting() {
+    const modes = ['full', 'minimal', 'off'];
+    const nextIdx = (modes.indexOf(appSettings.voicePrompts) + 1) % modes.length;
+    appSettings.voicePrompts = modes[nextIdx];
+    saveSettings();
+    applySettingsToDOM();
+    if (workoutEngine && appSettings.voicePrompts === 'off') {
+        workoutEngine.stopAudio();
+    }
+    const labels = {
+        full: '🗣️ Voice Narration: Full',
+        minimal: '🔉 Voice Narration: Minimal',
+        off: '🔇 Voice Narration: Off (Muted)'
+    };
+    showToast(labels[appSettings.voicePrompts]);
 }
 
 function triggerHaptic(pattern = [100]) {
@@ -1486,6 +1518,8 @@ class WorkoutEngine {
         this.timeLeft = 0;
         this.timerId = null;
         this.isRunning = false;
+        this.currentAudio = null;
+        this.currentTtsController = null;
 
         this.buildSequence();
         this.initDOM();
@@ -1576,27 +1610,61 @@ class WorkoutEngine {
         });
     }
 
+    stopAudio() {
+        if (this.currentTtsController) {
+            try { this.currentTtsController.abort(); } catch (e) {}
+            this.currentTtsController = null;
+        }
+        if (this.currentAudio) {
+            try {
+                this.currentAudio.pause();
+                this.currentAudio.currentTime = 0;
+            } catch (e) {}
+            this.currentAudio = null;
+        }
+        if ('speechSynthesis' in window) {
+            try {
+                window.speechSynthesis.cancel();
+            } catch (e) {}
+        }
+    }
+
     speak(text) {
         if (appSettings.voicePrompts === 'off') return;
+
+        this.stopAudio();
+
+        this.currentTtsController = new AbortController();
+        const signal = this.currentTtsController.signal;
 
         fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: text })
+            body: JSON.stringify({ text: text }),
+            signal: signal
         })
         .then(res => {
             if (!res.ok) throw new Error('TTS proxy failed');
             return res.blob();
         })
         .then(blob => {
+            if (appSettings.voicePrompts === 'off' || !this.isRunning) return;
             const url = URL.createObjectURL(blob);
             const audio = new Audio(url);
+            this.currentAudio = audio;
             audio.playbackRate = appSettings.voiceSpeed || 1.1;
-            audio.play();
-            audio.onended = () => URL.revokeObjectURL(url);
+            audio.play().catch(e => console.log('Audio play interrupted:', e));
+            audio.onended = () => {
+                URL.revokeObjectURL(url);
+                if (this.currentAudio === audio) {
+                    this.currentAudio = null;
+                }
+            };
         })
         .catch(e => {
-            console.error("Custom TTS failed, falling back to window.speechSynthesis", e);
+            if (e.name === 'AbortError') return;
+            if (appSettings.voicePrompts === 'off' || !this.isRunning) return;
+            console.warn("Custom TTS failed, falling back to window.speechSynthesis", e);
             this.fallbackSpeak(text);
         });
     }
@@ -1783,6 +1851,7 @@ class WorkoutEngine {
         if (!this.isRunning) return;
         this.isRunning = false;
         clearInterval(this.timerId);
+        this.stopAudio();
         this.playPauseBtn.innerHTML = '&#9658;';
         this.playPauseBtn.title = 'Play (Spacebar)';
     }
@@ -1833,6 +1902,7 @@ class WorkoutEngine {
 
     stop() {
         this.pause();
+        this.stopAudio();
         releaseWakeLock();
     }
 }
@@ -1848,6 +1918,26 @@ document.getElementById('startPlanBtn').addEventListener('click', () => {
     showView('workout');
     workoutEngine.start();
 });
+
+const planVoicePromptsSelect = document.getElementById('planVoicePrompts');
+if (planVoicePromptsSelect) {
+    planVoicePromptsSelect.addEventListener('change', (e) => {
+        appSettings.voicePrompts = e.target.value;
+        saveSettings();
+        applySettingsToDOM();
+        const modeLabels = {
+            full: '🗣️ Full Narration (Details & Notes)',
+            minimal: '🔉 Minimal Cues (Beeps & Sides)',
+            off: '🔇 Silent (No Voice Narration)'
+        };
+        showToast(`Voice Prompts: ${modeLabels[appSettings.voicePrompts] || appSettings.voicePrompts}`);
+    });
+}
+
+const workoutVoiceToggleBtn = document.getElementById('workoutVoiceToggleBtn');
+if (workoutVoiceToggleBtn) {
+    workoutVoiceToggleBtn.addEventListener('click', cycleVoicePromptsSetting);
+}
 
 document.getElementById('exitWorkoutBtn').addEventListener('click', () => {
     if (workoutEngine) workoutEngine.stop();

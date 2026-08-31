@@ -83,7 +83,17 @@
                 <!-- Exercise items will be injected here -->
             </div>
 
-            <button id="startPlanBtn" class="btn btn-success btn-large btn-block mt-2">Start Workout</button>
+            <div class="workout-action-card card">
+                <div class="voice-preference-row">
+                    <label for="planVoicePrompts"><span>🗣️</span> Voice Narration:</label>
+                    <select id="planVoicePrompts">
+                        <option value="full">🗣️ Full Narration (Details &amp; Notes)</option>
+                        <option value="minimal">🔉 Minimal (Beeps &amp; Side Cues)</option>
+                        <option value="off">🔇 Off (Silent / Timer Only)</option>
+                    </select>
+                </div>
+                <button id="startPlanBtn" class="btn btn-success btn-large btn-block mt-2">Start Workout</button>
+            </div>
         </main>
 
         <!-- Exercise Editor Modal -->
@@ -312,6 +322,7 @@
                     <span id="workoutExerciseCounter" class="workout-sub-counter">Exercise 1 of 1</span>
                 </div>
                 <div class="workout-header-right">
+                    <button id="workoutVoiceToggleBtn" class="btn btn-icon" title="Toggle Voice Narration (Full / Minimal / Off)">🗣️</button>
                     <button id="workoutVoiceCmdBtn" class="btn btn-icon" title="Toggle Hands-Free Voice Commands">🎙️</button>
                     <button id="workoutPipBtn" class="btn btn-icon" title="Picture-in-Picture Floating Timer">📺</button>
                     <button id="workoutFullscreenBtn" class="btn btn-icon" title="Toggle Fullscreen">⛶</button>
