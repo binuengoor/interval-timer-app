@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Interval Timer App for Workouts and Physical Therapy">
+    <meta name="description" content="FlexTimer — Precision Interval Timer for Physical Therapy, Mobility & Workouts">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0f172a">
-    <title>Interval Timer App</title>
+    <meta name="theme-color" content="#0b0f12">
+    <title>FlexTimer — Interval Timer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Geist:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
@@ -20,55 +21,89 @@
         <main id="dashboardView" class="view">
             <header class="app-header">
                 <div class="header-brand">
-                    <h1>My Plans</h1>
+                    <h1><span class="font-headline">FlexTimer</span></h1>
                     <span id="headerStreakBadge" class="streak-badge" title="Current Daily Streak">🔥 0 Day Streak</span>
                 </div>
                 <div class="header-actions">
-                    <button id="openSettingsBtn" class="btn btn-secondary btn-icon-text" title="App Settings">⚙️</button>
-                    <button id="openTemplatesBtn" class="btn btn-secondary btn-icon-text" title="Browse Preset Routines">📚 Presets</button>
-                    <button id="exportPlansBtn" class="btn btn-secondary btn-icon-text" title="Export Plans to YAML">📥 Export</button>
-                    <button id="importPlansBtn" class="btn btn-secondary btn-icon-text" title="Import Plans from YAML/JSON">📤 Import</button>
+                    <button id="openSettingsBtn" class="btn btn-icon" title="App Settings"><span class="material-symbols-outlined">settings</span></button>
+                    <button id="openTemplatesBtn" class="btn btn-secondary btn-icon-text" title="Browse Preset Routines"><span class="material-symbols-outlined">library_books</span> Presets</button>
+                    <button id="exportPlansBtn" class="btn btn-secondary btn-icon-text" title="Export Plans to YAML"><span class="material-symbols-outlined">download</span> Export</button>
+                    <button id="importPlansBtn" class="btn btn-secondary btn-icon-text" title="Import Plans from YAML/JSON"><span class="material-symbols-outlined">upload</span> Import</button>
                     <input type="file" id="importFileInput" accept=".yml,.yaml,.json" class="hidden">
-                    <button id="editYamlBtn" class="btn btn-secondary">Edit YAML</button>
-                    <button id="createNewPlanBtn" class="btn btn-primary">+ New Plan</button>
+                    <button id="editYamlBtn" class="btn btn-secondary btn-icon-text" title="Edit YAML"><span class="material-symbols-outlined">code</span> YAML</button>
+                    <button id="createNewPlanBtn" class="btn btn-primary btn-icon-text" title="Create New Plan"><span class="material-symbols-outlined">add</span> New Plan</button>
                 </div>
             </header>
 
-            <!-- Dashboard Stats Summary Banner -->
-            <div id="dashboardStatsBanner" class="stats-summary-banner card">
-                <div class="stat-summary-item">
-                    <span class="stat-summary-val" id="bannerTotalWorkouts">0</span>
-                    <span class="stat-summary-label">Total Workouts</span>
+            <!-- Search & Filters -->
+            <div class="search-wrapper">
+                <span class="material-symbols-outlined search-icon">search</span>
+                <input type="text" id="dashboardSearch" class="dashboard-search" placeholder="Search routines, exercises..." autocomplete="off">
+            </div>
+            <div id="categoryFilters" class="category-filters">
+                <button class="filter-chip active" data-category="all">All Plans</button>
+                <button class="filter-chip" data-category="pt">Physical Therapy</button>
+                <button class="filter-chip" data-category="mobility">Mobility</button>
+                <button class="filter-chip" data-category="hiit">Core &amp; HIIT</button>
+            </div>
+
+            <!-- Stats Banner -->
+            <div id="dashboardStatsBanner" class="stats-summary-banner">
+                <div class="stat-summary-item card">
+                    <div>
+                        <span class="stat-summary-label">TOTAL WORKOUTS</span>
+                        <span class="material-symbols-outlined">check_circle</span>
+                    </div>
+                    <span id="bannerTotalWorkouts" class="stat-summary-val">0</span>
                 </div>
-                <div class="stat-summary-item">
-                    <span class="stat-summary-val" id="bannerCurrentStreak">0🔥</span>
-                    <span class="stat-summary-label">Day Streak</span>
+                <div class="stat-summary-item card">
+                    <div>
+                        <span class="stat-summary-label">DAY STREAK</span>
+                        <span>🔥</span>
+                    </div>
+                    <span id="bannerCurrentStreak" class="stat-summary-val">0🔥</span>
                 </div>
-                <div class="stat-summary-item">
-                    <span class="stat-summary-val" id="bannerTotalPlans">0</span>
-                    <span class="stat-summary-label">Custom Plans</span>
+                <div class="stat-summary-item card">
+                    <div>
+                        <span class="stat-summary-label">CUSTOM PLANS</span>
+                        <span class="material-symbols-outlined">library_books</span>
+                    </div>
+                    <span id="bannerTotalPlans" class="stat-summary-val">0</span>
+                </div>
+            </div>
+
+            <!-- Heatmap Section -->
+            <div class="heatmap-section card">
+                <h3>Activity Heatmap</h3>
+                <div id="statsHeatmap" class="activity-heatmap"></div>
+                <div class="heatmap-legend">
+                    <span>Less</span>
+                    <div class="legend-dot" style="background: #1e293b;"></div>
+                    <div class="legend-dot" style="background: #065f46;"></div>
+                    <div class="legend-dot" style="background: #10b981;"></div>
+                    <span>More</span>
                 </div>
             </div>
 
             <div id="planList" class="plan-list">
-                <!-- Plan items will be injected here -->
+                <!-- Plan items injected by JS -->
             </div>
         </main>
 
         <!-- Plan Editor View -->
         <main id="planEditorView" class="view hidden">
             <header class="app-header">
-                <button id="backToDashboardBtn" class="btn btn-icon">&larr; Back</button>
-                <h1 id="planEditorTitle">Edit Plan</h1>
+                <button id="backToDashboardBtn" class="btn btn-icon" title="Back to Dashboard"><span class="material-symbols-outlined">arrow_back</span> Back</button>
+                <h1 id="planEditorTitle" class="font-headline">Edit Plan</h1>
             </header>
 
             <div class="card editor-card">
                 <div class="input-group">
-                    <label for="planName">Plan Name</label>
+                    <label for="planName">Routine Name</label>
                     <input type="text" id="planName" placeholder="e.g., Shoulder Rehab Level 1">
                 </div>
                 <div class="input-group mt-2">
-                    <label for="planTransitionTime">Time between exercises (sec)</label>
+                    <label for="planTransitionTime">Rest between exercises (sec)</label>
                     <input type="number" id="planTransitionTime" min="0" value="5">
                 </div>
                 <button id="savePlanBtn" class="btn btn-secondary mt-2">Save Plan Settings</button>
@@ -76,7 +111,7 @@
 
             <div class="exercises-header">
                 <h2>Exercises</h2>
-                <button id="addExerciseBtn" class="btn btn-primary btn-sm">+ Add Exercise</button>
+                <button id="addExerciseBtn" class="btn btn-primary btn-sm"><span class="material-symbols-outlined">add</span> Add Exercise</button>
             </div>
 
             <div id="exerciseList" class="exercise-list">
@@ -85,14 +120,14 @@
 
             <div class="workout-action-card card">
                 <div class="voice-preference-row">
-                    <label for="planVoicePrompts"><span>🗣️</span> Voice Narration:</label>
+                    <label for="planVoicePrompts">🗣️ Voice Narration:</label>
                     <select id="planVoicePrompts">
-                        <option value="full">🗣️ Full Narration (Details &amp; Notes)</option>
-                        <option value="minimal">🔉 Minimal (Beeps &amp; Side Cues)</option>
-                        <option value="off">🔇 Off (Silent / Timer Only)</option>
+                        <option value="full">🗣️ Full Narration</option>
+                        <option value="minimal">🔉 Minimal</option>
+                        <option value="off">🔇 Off</option>
                     </select>
                 </div>
-                <button id="startPlanBtn" class="btn btn-success btn-large btn-block mt-2">Start Workout</button>
+                <button id="startPlanBtn" class="btn btn-success btn-large btn-block mt-2">Start Workout ▶</button>
             </div>
         </main>
 
@@ -161,7 +196,7 @@
 
         <!-- Media Lightbox Modal -->
         <div id="mediaLightboxModal" class="modal hidden">
-            <div class="lightbox-container">
+            <div class="lightbox-container card">
                 <button id="closeLightboxBtn" class="btn btn-icon lightbox-close-btn" aria-label="Close">&times;</button>
                 <h3 id="lightboxTitle" class="lightbox-title">Exercise Media</h3>
                 <div id="lightboxMediaContent" class="lightbox-media-wrapper">
@@ -179,8 +214,8 @@
         <div id="settingsModal" class="modal hidden">
             <div class="modal-content card">
                 <div class="modal-header-row">
-                    <h2>⚙️ App Settings</h2>
-                    <button id="closeSettingsBtn" class="btn btn-icon" style="font-size: 1.5rem;">&times;</button>
+                    <h2><span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 0.25rem;">settings</span> App Settings</h2>
+                    <button id="closeSettingsBtn" class="btn btn-icon" style="font-size: 1.5rem;" aria-label="Close">&times;</button>
                 </div>
 
                 <div class="input-group mt-2">
@@ -221,8 +256,8 @@
         <div id="templatesModal" class="modal hidden">
             <div class="modal-content card" style="max-width: 600px;">
                 <div class="modal-header-row">
-                    <h2>📚 Workout Routine Presets</h2>
-                    <button id="closeTemplatesBtn" class="btn btn-icon" style="font-size: 1.5rem;">&times;</button>
+                    <h2><span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 0.25rem;">library_books</span> Workout Routine Presets</h2>
+                    <button id="closeTemplatesBtn" class="btn btn-icon" style="font-size: 1.5rem;" aria-label="Close">&times;</button>
                 </div>
                 <p class="text-muted" style="margin-bottom: 1rem;">Choose a pre-configured routine to add to your plans.</p>
                 <div id="templatesList" class="templates-list">
@@ -250,20 +285,7 @@
             <div class="modal-content card" style="max-width: 600px;">
                 <div class="modal-header-row">
                     <h2>Workout Stats &amp; Activity</h2>
-                    <button id="closeStatsBtn" class="btn btn-icon" style="font-size: 1.5rem;">&times;</button>
-                </div>
-
-                <!-- 30-Day Activity Heatmap Grid -->
-                <div class="heatmap-section card mt-2">
-                    <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem;">Last 30 Days Activity</h3>
-                    <div id="statsHeatmap" class="activity-heatmap"></div>
-                    <div class="heatmap-legend">
-                        <span>Less</span>
-                        <div class="legend-dot" style="background: #1e293b;"></div>
-                        <div class="legend-dot" style="background: #065f46;"></div>
-                        <div class="legend-dot" style="background: #10b981;"></div>
-                        <span>More</span>
-                    </div>
+                    <button id="closeStatsBtn" class="btn btn-icon" style="font-size: 1.5rem;" aria-label="Close">&times;</button>
                 </div>
 
                 <div id="statsContent" style="margin-top: 1rem; max-height: 250px; overflow-y: auto;">
@@ -278,14 +300,18 @@
 
         <!-- Workout Complete & Pain Level Modal -->
         <div id="workoutCompleteModal" class="modal hidden">
-            <div class="modal-content card" style="max-width: 480px; text-align: center;">
-                <div style="font-size: 3rem; margin-bottom: 0.25rem;">🎉</div>
+            <div class="modal-content card" style="max-width: 520px; text-align: center;">
+                <!-- Completion Badge -->
+                <div class="workout-complete-badge">
+                    <span class="icon material-symbols-outlined">military_tech</span>
+                </div>
                 <h2>Workout Complete!</h2>
-                <p class="text-muted" style="font-size: 0.9rem;">Great job! How did your body feel today?</p>
-                
+                <p class="text-muted">Great job! How did your body feel today?</p>
+
+                <!-- Pain Tracker -->
                 <div class="pain-tracker-card mt-2">
                     <div class="pain-header-row">
-                        <label for="painScoreSlider"><strong>Pain / Discomfort:</strong></label>
+                        <label for="painScoreSlider">Pain / Discomfort:</label>
                         <span id="painScoreDisplay" class="pain-badge pain-lvl-0">0 - None 😊</span>
                     </div>
                     <input type="range" id="painScoreSlider" min="0" max="10" step="1" value="0" class="pain-slider mt-1">
@@ -296,9 +322,21 @@
                     </div>
                 </div>
 
+                <!-- Body Region Chips (NEW) -->
+                <div class="input-group mt-2" style="text-align: left;">
+                    <label>Target Body Region</label>
+                    <div id="painRegionChips" class="pain-region-chips">
+                        <button type="button" class="region-chip" data-region="neck">Neck</button>
+                        <button type="button" class="region-chip" data-region="shoulders">Shoulders</button>
+                        <button type="button" class="region-chip" data-region="lower-back">Lower Back</button>
+                        <button type="button" class="region-chip" data-region="hips">Hips</button>
+                        <button type="button" class="region-chip" data-region="knees">Knees</button>
+                    </div>
+                </div>
+
                 <div class="input-group mt-2" style="text-align: left;">
                     <label for="workoutPainNotes">Session Notes (Optional)</label>
-                    <textarea id="workoutPainNotes" rows="2" placeholder="e.g. Left shoulder felt looser, increased reps on plank..."></textarea>
+                    <textarea id="workoutPainNotes" rows="2" placeholder="e.g. Left shoulder felt looser..."></textarea>
                 </div>
 
                 <div class="modal-actions mt-2">
@@ -316,24 +354,24 @@
             </div>
 
             <header class="workout-header-bar">
-                <button id="exitWorkoutBtn" class="btn btn-icon" title="Exit to Plan">&larr; Exit</button>
+                <button id="exitWorkoutBtn" class="btn btn-icon" title="Exit to Plan"><span class="material-symbols-outlined">arrow_back</span> Exit</button>
                 <div class="workout-header-info">
                     <h2 id="workoutPlanName">Plan Name</h2>
                     <span id="workoutExerciseCounter" class="workout-sub-counter">Exercise 1 of 1</span>
                 </div>
                 <div class="workout-header-right">
-                    <button id="workoutVoiceToggleBtn" class="btn btn-icon" title="Toggle Voice Narration (Full / Minimal / Off)">🗣️</button>
-                    <button id="workoutVoiceCmdBtn" class="btn btn-icon" title="Toggle Hands-Free Voice Commands">🎙️</button>
-                    <button id="workoutPipBtn" class="btn btn-icon" title="Picture-in-Picture Floating Timer">📺</button>
-                    <button id="workoutFullscreenBtn" class="btn btn-icon" title="Toggle Fullscreen">⛶</button>
-                    <button id="skipExerciseBtn" class="btn btn-sm btn-secondary" title="Skip to Next Exercise">Skip Ex &rarr;</button>
+                    <button id="workoutVoiceToggleBtn" class="btn btn-icon" title="Toggle Voice">🗣️</button>
+                    <button id="workoutVoiceCmdBtn" class="btn btn-icon" title="Voice Commands">🎙️</button>
+                    <button id="workoutPipBtn" class="btn btn-icon" title="PiP"><span class="material-symbols-outlined">picture_in_picture_alt</span></button>
+                    <button id="workoutFullscreenBtn" class="btn btn-icon" title="Fullscreen"><span class="material-symbols-outlined">fullscreen</span></button>
+                    <button id="skipExerciseBtn" class="btn btn-sm btn-secondary" title="Skip to Next Exercise">Skip Ex →</button>
                 </div>
             </header>
 
-            <!-- Voice Control HUD Pill -->
+            <!-- Voice HUD Pill -->
             <div id="voiceHudPill" class="voice-hud-pill hidden">
                 <span class="voice-pulse-dot"></span>
-                <span id="voiceHudText">🎙️ Listening for: <em>"pause"</em>, <em>"resume"</em>, <em>"next"</em>, <em>"skip"</em>, <em>"back"</em></span>
+                <span id="voiceHudText">🎙️ Listening...</span>
             </div>
 
             <div class="workout-content">
@@ -362,22 +400,41 @@
                     </div>
                 </div>
 
-                <!-- Circular SVG Timer Section -->
+                <!-- REDESIGNED Circular SVG Timer -->
                 <div class="timer-section">
                     <div id="phaseDisplay" class="phase-label">PREPARE</div>
                     <div class="timer-ring-container">
-                        <svg class="timer-ring-svg" viewBox="0 0 220 220">
-                            <circle class="timer-ring-bg" cx="110" cy="110" r="95"></circle>
-                            <circle id="timerRingProgress" class="timer-ring-progress phase-prepare-stroke" cx="110" cy="110" r="95"></circle>
+                        <svg class="timer-ring-svg" viewBox="0 0 380 380">
+                            <circle class="timer-ring-bg" cx="190" cy="190" r="165"></circle>
+                            <circle id="timerRingProgress" class="timer-ring-progress phase-prepare-stroke" cx="190" cy="190" r="165"></circle>
+                            <defs>
+                                <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#06D6A0"></stop>
+                                    <stop offset="100%" stop-color="#00D4FF"></stop>
+                                </linearGradient>
+                            </defs>
                         </svg>
                         <div id="timerDisplay" class="display phase-prepare">00:00</div>
                     </div>
+                    <!-- UP NEXT Badge -->
+                    <div id="upNextBadge" class="up-next-badge hidden">
+                        <span class="up-next-label">UP NEXT:</span>
+                        <span id="upNextText">Rest</span>
+                    </div>
                 </div>
 
+                <!-- Play/Pause/Next Controls -->
                 <div class="controls workout-controls">
-                    <button id="prevPhaseBtn" class="btn btn-control" title="Previous Phase (Left Arrow)" aria-label="Previous Phase">&#9198;</button>
-                    <button id="playPauseBtn" class="btn btn-control btn-play" title="Play / Pause (Spacebar)" aria-label="Play/Pause">&#9658;</button>
-                    <button id="nextPhaseBtn" class="btn btn-control" title="Next Phase (Right Arrow)" aria-label="Next Phase">&#9197;</button>
+                    <button id="prevPhaseBtn" class="btn btn-control" title="Previous Phase" aria-label="Previous Phase"><span class="material-symbols-outlined">skip_previous</span></button>
+                    <button id="playPauseBtn" class="btn btn-control btn-play" title="Play/Pause" aria-label="Play/Pause"><span class="material-symbols-outlined">play_arrow</span></button>
+                    <button id="nextPhaseBtn" class="btn btn-control" title="Next Phase" aria-label="Next Phase"><span class="material-symbols-outlined">skip_next</span></button>
+                </div>
+
+                <!-- NEW: On-the-fly Adjuster Buttons -->
+                <div class="adjuster-buttons">
+                    <button id="addTimeBtn" class="btn-adjuster">+10s Work</button>
+                    <button id="subtractTimeBtn" class="btn-adjuster">-5s</button>
+                    <button id="restartRepBtn" class="btn-adjuster">↺ Restart Rep</button>
                 </div>
             </div>
         </main>

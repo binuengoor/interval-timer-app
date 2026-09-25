@@ -599,6 +599,38 @@ async function renderDashboard() {
     });
 }
 
+// Dashboard search & filter functionality
+const dashboardSearch = document.getElementById('dashboardSearch');
+const categoryFilters = document.getElementById('categoryFilters');
+
+function filterDashboard() {
+    const searchTerm = dashboardSearch ? dashboardSearch.value.toLowerCase().trim() : '';
+    const activeFilter = categoryFilters ? categoryFilters.querySelector('.filter-chip.active') : null;
+    const category = activeFilter ? activeFilter.dataset.category : 'all';
+    const planItems = document.querySelectorAll('#planList .plan-item');
+    
+    planItems.forEach(item => {
+        const name = (item.querySelector('.plan-item-name') || item.querySelector('h3') || item).textContent.toLowerCase();
+        const matchesSearch = !searchTerm || name.includes(searchTerm);
+        const matchesCategory = category === 'all' || true; // Plans don't have categories yet, show all
+        item.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
+    });
+}
+
+if (dashboardSearch) {
+    dashboardSearch.addEventListener('input', filterDashboard);
+}
+
+if (categoryFilters) {
+    categoryFilters.addEventListener('click', (e) => {
+        const chip = e.target.closest('.filter-chip');
+        if (!chip) return;
+        categoryFilters.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        filterDashboard();
+    });
+}
+
 document.getElementById('createNewPlanBtn').addEventListener('click', () => {
     const newPlan = { id: generateId(), name: '', transitionTime: 5, exercises: [] };
     plans.push(newPlan);
@@ -780,10 +812,23 @@ function showWorkoutCompleteModal(planId) {
         painDisplay.textContent = PAIN_LABELS[0];
         painDisplay.className = 'pain-badge pain-lvl-0';
     }
+    if (painRegionChips) {
+        painRegionChips.querySelectorAll('.region-chip.selected').forEach(c => c.classList.remove('selected'));
+    }
     const notesInput = document.getElementById('workoutPainNotes');
     if (notesInput) notesInput.value = '';
 
     document.getElementById('workoutCompleteModal').classList.remove('hidden');
+}
+
+// Pain region chip selection
+const painRegionChips = document.getElementById('painRegionChips');
+if (painRegionChips) {
+    painRegionChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('.region-chip');
+        if (!chip) return;
+        chip.classList.toggle('selected');
+    });
 }
 
 document.getElementById('savePainLogBtn').addEventListener('click', async () => {
@@ -791,16 +836,26 @@ document.getElementById('savePainLogBtn').addEventListener('click', async () => 
     const painVal = painSlider ? parseInt(painSlider.value) : 0;
     const notesVal = document.getElementById('workoutPainNotes')?.value || '';
 
+    const entry = {
+        planId: pendingWorkoutStats.planId,
+        timestamp: pendingWorkoutStats.timestamp,
+        painLevel: painVal,
+        notes: notesVal
+    };
+
+    // Collect selected pain regions
+    if (painRegionChips) {
+        const selectedRegions = Array.from(painRegionChips.querySelectorAll('.region-chip.selected')).map(c => c.dataset.region);
+        if (selectedRegions.length > 0) {
+            entry.painRegions = selectedRegions;
+        }
+    }
+
     try {
         await fetch('/api/stats', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                planId: pendingWorkoutStats.planId,
-                timestamp: pendingWorkoutStats.timestamp,
-                painLevel: painVal,
-                notes: notesVal
-            })
+            body: JSON.stringify(entry)
         });
         showToast("Workout log saved!");
     } catch (e) {
@@ -1526,6 +1581,18 @@ class WorkoutEngine {
         requestWakeLock();
     }
 
+    get running() {
+        return this.isRunning || (this.sequence && this.currentIndex < this.sequence.length && this.sequence[this.currentIndex].phase !== 'DONE');
+    }
+
+    get currentStepIndex() {
+        return this.currentIndex;
+    }
+
+    set currentStepIndex(val) {
+        this.currentIndex = val;
+    }
+
     buildSequence() {
         this.sequence = [];
         const totalExercises = (this.plan.exercises || []).length;
@@ -1754,7 +1821,8 @@ class WorkoutEngine {
 
         if (this.sideBadge) {
             if (step.side) {
-                this.sideBadge.textContent = `${step.side} SIDE`;
+                const sideLabel = step.side.toUpperCase() === 'LEFT' ? 'LEFT SIDE' : 'RIGHT SIDE';
+                this.sideBadge.textContent = step.phase.toUpperCase() + ' PHASE — ' + sideLabel;
                 this.sideBadge.classList.remove('hidden');
             } else {
                 this.sideBadge.classList.add('hidden');
@@ -1783,6 +1851,24 @@ class WorkoutEngine {
 
         this.updateOverallProgress();
         this.updateTimeDisplay();
+
+        // Update UP NEXT badge
+        const upNextBadge = document.getElementById('upNextBadge');
+        const upNextText = document.getElementById('upNextText');
+        if (upNextBadge && upNextText) {
+            const nextIdx = this.currentStepIndex + 1;
+            if (nextIdx < this.sequence.length) {
+                const nextStep = this.sequence[nextIdx];
+                let nextLabel = nextStep.phase;
+                if (nextStep.exercise) nextLabel += ': ' + (nextStep.exercise.name || nextStep.exercise);
+                if (nextStep.side) nextLabel += ' (' + nextStep.side + ')';
+                upNextText.textContent = nextLabel;
+                upNextBadge.classList.remove('hidden');
+            } else {
+                upNextText.textContent = 'Finish!';
+                upNextBadge.classList.remove('hidden');
+            }
+        }
     }
 
     formatTime(seconds) {
@@ -1797,7 +1883,7 @@ class WorkoutEngine {
 
         // Update Circular SVG Timer Ring
         if (this.timerRing) {
-            const circumference = 596.9; // 2 * PI * 95
+            const circumference = 1036.7; // 2 * PI * 165
             const fraction = (step && step.duration > 0) ? (this.timeLeft / step.duration) : 0;
             const offset = circumference * (1 - fraction);
             this.timerRing.style.strokeDashoffset = offset.toFixed(1);
@@ -1970,6 +2056,50 @@ document.getElementById('workoutFullscreenBtn').addEventListener('click', () => 
         document.exitFullscreen().catch(err => console.log('Exit fullscreen error:', err));
     }
 });
+
+// On-the-fly timer adjusters
+const addTimeBtn = document.getElementById('addTimeBtn');
+const subtractTimeBtn = document.getElementById('subtractTimeBtn');
+const restartRepBtn = document.getElementById('restartRepBtn');
+
+if (addTimeBtn) {
+    addTimeBtn.addEventListener('click', () => {
+        if (workoutEngine && workoutEngine.running) {
+            workoutEngine.timeLeft += 10;
+            if (workoutEngine.sequence[workoutEngine.currentStepIndex]) {
+                workoutEngine.sequence[workoutEngine.currentStepIndex].duration += 10;
+            }
+            workoutEngine.updateTimeDisplay();
+            showToast('+10s added');
+        }
+    });
+}
+
+if (subtractTimeBtn) {
+    subtractTimeBtn.addEventListener('click', () => {
+        if (workoutEngine && workoutEngine.running) {
+            workoutEngine.timeLeft = Math.max(1, workoutEngine.timeLeft - 5);
+            if (workoutEngine.sequence[workoutEngine.currentStepIndex]) {
+                workoutEngine.sequence[workoutEngine.currentStepIndex].duration = Math.max(1, workoutEngine.sequence[workoutEngine.currentStepIndex].duration - 5);
+            }
+            workoutEngine.updateTimeDisplay();
+            showToast('-5s removed');
+        }
+    });
+}
+
+if (restartRepBtn) {
+    restartRepBtn.addEventListener('click', () => {
+        if (workoutEngine && workoutEngine.running) {
+            const step = workoutEngine.sequence[workoutEngine.currentStepIndex];
+            if (step) {
+                workoutEngine.timeLeft = step.duration;
+                workoutEngine.updateTimeDisplay();
+                showToast('Rep restarted');
+            }
+        }
+    });
+}
 
 // --- Modal Dismissal on Backdrop Click ---
 document.querySelectorAll('.modal').forEach(modal => {
