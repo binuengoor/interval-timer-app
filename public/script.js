@@ -469,15 +469,28 @@ function calculateStreakAndStats(statsMap) {
         }
     }
 
-    // Render 30-Day Activity Heatmap Grid
+    // Render Compact Multi-Week Activity Heatmap Grid (Last 16 weeks / 112 days)
     const heatmap = document.getElementById('statsHeatmap');
+    const heatmapStatsEl = document.getElementById('heatmapActiveStats');
     if (heatmap) {
         heatmap.innerHTML = '';
-        for (let i = 29; i >= 0; i--) {
+        const totalDays = 112; // 16 weeks * 7 days
+        let activeDaysInWindow = 0;
+
+        // Container-level tooltip
+        let tooltip = heatmap.parentElement.querySelector('.heatmap-tooltip');
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.className = 'heatmap-tooltip';
+            heatmap.parentElement.appendChild(tooltip);
+        }
+
+        for (let i = totalDays - 1; i >= 0; i--) {
             const pastD = new Date(now);
             pastD.setDate(now.getDate() - i);
             const pastStr = pastD.toISOString().split('T')[0];
             const count = dateCounts[pastStr] || 0;
+            if (count > 0) activeDaysInWindow++;
 
             const cell = document.createElement('div');
             let levelClass = 'level-0';
@@ -486,8 +499,55 @@ function calculateStreakAndStats(statsMap) {
             else if (count === 1) levelClass = 'level-1';
 
             cell.className = `heatmap-cell ${levelClass}`;
-            cell.title = `${pastD.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}: ${count} workout${count === 1 ? '' : 's'}`;
+            const formattedDate = pastD.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            const tooltipMsg = `${formattedDate} • ${count} workout${count === 1 ? '' : 's'}`;
+            cell.dataset.tooltip = tooltipMsg;
+
+            // Hover tooltip
+            cell.addEventListener('mouseenter', () => {
+                tooltip.textContent = tooltipMsg;
+                tooltip.classList.add('visible');
+                const cellRect = cell.getBoundingClientRect();
+                const parentRect = heatmap.parentElement.getBoundingClientRect();
+                const leftPos = cellRect.left - parentRect.left + (cellRect.width / 2);
+                const topPos = cellRect.top - parentRect.top - 8;
+                tooltip.style.left = `${leftPos}px`;
+                tooltip.style.top = `${topPos}px`;
+                tooltip.style.bottom = 'auto';
+                tooltip.style.transform = 'translate(-50%, -100%)';
+            });
+
+            cell.addEventListener('mouseleave', () => {
+                tooltip.classList.remove('visible');
+            });
+
+            // Click / tap support (e.g. mobile)
+            cell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                heatmap.querySelectorAll('.heatmap-cell').forEach(c => c.classList.remove('active-cell'));
+                cell.classList.add('active-cell');
+                tooltip.textContent = tooltipMsg;
+                tooltip.classList.add('visible');
+                const cellRect = cell.getBoundingClientRect();
+                const parentRect = heatmap.parentElement.getBoundingClientRect();
+                const leftPos = cellRect.left - parentRect.left + (cellRect.width / 2);
+                const topPos = cellRect.top - parentRect.top - 8;
+                tooltip.style.left = `${leftPos}px`;
+                tooltip.style.top = `${topPos}px`;
+                tooltip.style.bottom = 'auto';
+                tooltip.style.transform = 'translate(-50%, -100%)';
+            });
+
             heatmap.appendChild(cell);
+        }
+
+        document.addEventListener('click', () => {
+            if (tooltip) tooltip.classList.remove('visible');
+            if (heatmap) heatmap.querySelectorAll('.heatmap-cell').forEach(c => c.classList.remove('active-cell'));
+        }, { passive: true });
+
+        if (heatmapStatsEl) {
+            heatmapStatsEl.textContent = `${activeDaysInWindow} active days in last 16 weeks`;
         }
     }
 
@@ -575,18 +635,40 @@ async function renderDashboard() {
             }
         });
 
+// Helper to deduce a plan's category based on title, description & exercises
+function getPlanCategory(plan) {
+    const text = ((plan.name || '') + ' ' + (plan.exercises || []).map(e => (e.name || '') + ' ' + (e.notes || '')).join(' ')).toLowerCase();
+    if (text.includes('hiit') || text.includes('tabata') || text.includes('core') || text.includes('interval') || text.includes('cardio') || text.includes('plank') || text.includes('jumping') || text.includes('pushup')) {
+        return 'hiit';
+    }
+    if (text.includes('pt') || text.includes('rehab') || text.includes('therapy') || text.includes('shoulder') || text.includes('back pain') || text.includes('lumbar') || text.includes('stretch') || text.includes('piriformis') || text.includes('cuff') || text.includes('wall slide') || text.includes('isometric')) {
+        return 'pt';
+    }
+    if (text.includes('mobility') || text.includes('ergonomic') || text.includes('desk') || text.includes('flow') || text.includes('wrist') || text.includes('neck') || text.includes('cat-camel') || text.includes('twist')) {
+        return 'mobility';
+    }
+    return 'pt'; // default clinical
+}
+
         const m = Math.floor(totalSeconds / 60);
         const s = totalSeconds % 60;
         const durationStr = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 
+        const category = getPlanCategory(plan);
+        const categoryLabel = category === 'hiit' ? 'Core & HIIT' : category === 'mobility' ? 'Mobility' : 'Physical Therapy';
+
         const div = document.createElement('div');
         div.className = 'plan-item card';
+        div.dataset.category = category;
         div.onclick = () => editPlan(plan.id);
         div.innerHTML = `
             <div class="item-details">
-                <h3>${plan.name || 'Untitled Plan'}</h3>
-                <p>${(plan.exercises || []).length} exercises &bull; Est. Time: ${durationStr}</p>
-                <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <h3 class="plan-item-name" style="margin: 0;">${plan.name || 'Untitled Plan'}</h3>
+                    <span class="badge" style="font-size: 0.7rem; text-transform: uppercase; padding: 2px 8px; background: var(--card-bg-highest); color: var(--primary);">${categoryLabel}</span>
+                </div>
+                <p style="margin-top: 0.35rem;">${(plan.exercises || []).length} exercises &bull; Est. Time: ${durationStr}</p>
+                <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.4rem;">
                     Completed ${timesCompleted} times &bull; Last: ${lastCompleteStr}
                 </div>
             </div>
@@ -597,6 +679,8 @@ async function renderDashboard() {
         `;
         list.appendChild(div);
     });
+
+    filterDashboard();
 }
 
 // Dashboard search & filter functionality
@@ -611,8 +695,9 @@ function filterDashboard() {
     
     planItems.forEach(item => {
         const name = (item.querySelector('.plan-item-name') || item.querySelector('h3') || item).textContent.toLowerCase();
+        const itemCategory = item.dataset.category || 'all';
         const matchesSearch = !searchTerm || name.includes(searchTerm);
-        const matchesCategory = category === 'all' || true; // Plans don't have categories yet, show all
+        const matchesCategory = (category === 'all') || (itemCategory === category);
         item.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
     });
 }

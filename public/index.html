@@ -52,21 +52,18 @@
                 <div class="stat-summary-item card">
                     <div>
                         <span class="stat-summary-label">TOTAL WORKOUTS</span>
-                        <span class="material-symbols-outlined">check_circle</span>
                     </div>
                     <span id="bannerTotalWorkouts" class="stat-summary-val">0</span>
                 </div>
                 <div class="stat-summary-item card">
                     <div>
                         <span class="stat-summary-label">DAY STREAK</span>
-                        <span>🔥</span>
                     </div>
                     <span id="bannerCurrentStreak" class="stat-summary-val">0🔥</span>
                 </div>
                 <div class="stat-summary-item card">
                     <div>
                         <span class="stat-summary-label">CUSTOM PLANS</span>
-                        <span class="material-symbols-outlined">library_books</span>
                     </div>
                     <span id="bannerTotalPlans" class="stat-summary-val">0</span>
                 </div>
@@ -74,13 +71,19 @@
 
             <!-- Heatmap Section -->
             <div class="heatmap-section card">
-                <h3>Activity Heatmap</h3>
-                <div id="statsHeatmap" class="activity-heatmap"></div>
+                <div class="heatmap-header">
+                    <h3>Activity Heatmap</h3>
+                    <span id="heatmapActiveStats" class="heatmap-sub">Last 16 weeks</span>
+                </div>
+                <div class="heatmap-scroll-wrap">
+                    <div id="statsHeatmap" class="activity-heatmap"></div>
+                </div>
                 <div class="heatmap-legend">
                     <span>Less</span>
-                    <div class="legend-dot" style="background: #1e293b;"></div>
-                    <div class="legend-dot" style="background: #065f46;"></div>
-                    <div class="legend-dot" style="background: #10b981;"></div>
+                    <div class="legend-dot" style="background: #181c1f; border: 1px solid rgba(255,255,255,0.1);"></div>
+                    <div class="legend-dot" style="background: rgba(6, 214, 160, 0.35);"></div>
+                    <div class="legend-dot" style="background: rgba(6, 214, 160, 0.7);"></div>
+                    <div class="legend-dot" style="background: #06d6a0;"></div>
                     <span>More</span>
                 </div>
             </div>
@@ -375,32 +378,7 @@
             </div>
 
             <div class="workout-content">
-                <div class="workout-info-card card">
-                    <h3 id="workoutExerciseName" class="text-xl">Exercise Name</h3>
-                    <p id="workoutExerciseNotes" class="notes"></p>
-                    <div class="badge-group">
-                        <div id="workoutProgress" class="badge">Set 1 of 3</div>
-                        <div id="workoutSideBadge" class="badge badge-side hidden">LEFT SIDE</div>
-                    </div>
-                </div>
-
-                <!-- Media Section -->
-                <div id="workoutMediaContainer" class="media-container hidden">
-                    <div id="mediaToggle" class="media-toggle hidden">
-                        <button id="showImageBtn" class="active">Images</button>
-                        <button id="showVideoBtn">Video</button>
-                    </div>
-                    <div id="imageCycleContainer" class="media-content" title="Click to enlarge">
-                        <img id="workoutImage" src="" alt="Exercise media">
-                        <div id="imagePaginationDots" class="image-pagination-dots hidden"></div>
-                        <div class="media-zoom-hint">🔍 Expand</div>
-                    </div>
-                    <div id="youtubeContainer" class="media-content hidden">
-                        <div id="youtubePlayer"></div>
-                    </div>
-                </div>
-
-                <!-- REDESIGNED Circular SVG Timer -->
+                <!-- Circular SVG Timer at TOP -->
                 <div class="timer-section">
                     <div id="phaseDisplay" class="phase-label">PREPARE</div>
                     <div class="timer-ring-container">
@@ -430,11 +408,37 @@
                     <button id="nextPhaseBtn" class="btn btn-control" title="Next Phase" aria-label="Next Phase"><span class="material-symbols-outlined">skip_next</span></button>
                 </div>
 
-                <!-- NEW: On-the-fly Adjuster Buttons -->
+                <!-- On-the-fly Adjuster Buttons -->
                 <div class="adjuster-buttons">
                     <button id="addTimeBtn" class="btn-adjuster">+10s Work</button>
                     <button id="subtractTimeBtn" class="btn-adjuster">-5s</button>
                     <button id="restartRepBtn" class="btn-adjuster">↺ Restart Rep</button>
+                </div>
+
+                <!-- Exercise Info & Cues (Below Timer) -->
+                <div class="workout-info-card card">
+                    <h3 id="workoutExerciseName" class="text-xl">Exercise Name</h3>
+                    <p id="workoutExerciseNotes" class="notes"></p>
+                    <div class="badge-group">
+                        <div id="workoutProgress" class="badge">Set 1 of 3</div>
+                        <div id="workoutSideBadge" class="badge badge-side hidden">LEFT SIDE</div>
+                    </div>
+                </div>
+
+                <!-- Media Section (Below Info) -->
+                <div id="workoutMediaContainer" class="media-container hidden">
+                    <div id="mediaToggle" class="media-toggle hidden">
+                        <button id="showImageBtn" class="active">Images</button>
+                        <button id="showVideoBtn">Video</button>
+                    </div>
+                    <div id="imageCycleContainer" class="media-content" title="Click to enlarge">
+                        <img id="workoutImage" src="" alt="Exercise media">
+                        <div id="imagePaginationDots" class="image-pagination-dots hidden"></div>
+                        <div class="media-zoom-hint">🔍 Expand</div>
+                    </div>
+                    <div id="youtubeContainer" class="media-content hidden">
+                        <div id="youtubePlayer"></div>
+                    </div>
                 </div>
             </div>
         </main>
